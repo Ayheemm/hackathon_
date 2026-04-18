@@ -1,0 +1,4 @@
+# Optional local generation dependency.
+# On Windows, this may require Visual Studio Build Tools (MSVC + CMake + NMake)
+# if no prebuilt wheel is available for your Python version.
+llama-cpp-python>=0.2.83

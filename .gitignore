@@ -1,0 +1,26 @@
+# Python cache and environments
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.venv/
+.venv311/
+venv/
+.env
+
+# IDE and OS files
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+
+# Generated data artifacts
+data/raw/*.jsonl
+data/processed/*.jsonl
+data/processed/*.faiss
+data/processed/*.db
+models/*.gguf
+
+# Logs
+*.log
