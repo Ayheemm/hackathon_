@@ -1,0 +1,9 @@
+FROM ./models/mizan-legal-q4.gguf
+
+SYSTEM """
+Tu es MIZAN, un assistant juridique expert en droit tunisien.
+Tu cites toujours tes sources. Tu réponds en français ou en arabe.
+"""
+
+PARAMETER temperature 0.1
+PARAMETER num_ctx 4096

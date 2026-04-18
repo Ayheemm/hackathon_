@@ -1,163 +1,245 @@
+"""
+MIZAN Legal RAG — Query Engine
+Drop this file at:  src/legal_rag/rag.py
+
+Dependencies already in requirements.txt:
+    faiss-cpu, numpy, requests
+Optional (install separately):
+    sentence-transformers  (for offline HuggingFace embedder fallback)
+"""
+from __future__ import annotations
+
+import json
+import logging
+import sqlite3
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any
 
-from .language import detect_language
-from .llm import load_generator_if_available
-from .retriever import FaissRetriever
-from .settings import DEFAULT_EMBEDDING_MODEL
+import faiss
+import numpy as np
 
+logger = logging.getLogger(__name__)
+
+
+# ─── Lazy imports so the engine starts even if Ollama is down ────────────────
+
+def _get_embedder(model_name: str = "nomic-embed-text-v2-moe:latest"):
+    """Return the OllamaEmbedder, or a SentenceTransformer fallback."""
+    try:
+        from legal_rag.embeddings import OllamaEmbedder  # type: ignore
+        emb = OllamaEmbedder(model_name=model_name)
+        # Quick health-check
+        emb.encode(["test"], normalize_embeddings=True)
+        return emb
+    except Exception as e:
+        logger.warning(f"OllamaEmbedder unavailable ({e}). Trying SentenceTransformer fallback…")
+        from sentence_transformers import SentenceTransformer  # type: ignore
+        return SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
+
+
+# ─── Engine ──────────────────────────────────────────────────────────────────
 
 class LegalRagEngine:
+    """
+    Minimal RAG engine that wraps a FAISS index + SQLite metadata store.
+
+    Usage (from NOTEBOOK_INTEGRATION.md):
+        engine = LegalRagEngine(
+            index_path=paths.faiss_index,
+            metadata_db_path=paths.metadata_db,
+            model_path=None,          # set path to .gguf for local LLM
+        )
+        result = engine.answer("Quelle est la procédure d'appel en matière civile ?")
+        print(result["answer"])
+    """
+
     def __init__(
         self,
-        index_path: Path,
-        metadata_db_path: Path,
-        embedding_model_name: str = DEFAULT_EMBEDDING_MODEL,
-        model_ref: Optional[str] = None,
+        index_path: str | Path,
+        metadata_db_path: str | Path,
+        model_path: str | Path | None = None,
+        embed_model: str = "nomic-embed-text-v2-moe:latest",
+        top_k: int = 5,
+        hf_api_token: str | None = None,
+        hf_model_id: str = "mistralai/Mistral-7B-Instruct-v0.3",
+        ollama_chat_model: str = "qwen3.5:4b",
     ):
-        self.retriever = FaissRetriever(
-            index_path=index_path,
-            metadata_db_path=metadata_db_path,
-            embedding_model_name=embedding_model_name,
-        )
-        self.generator = load_generator_if_available(model_ref)
+        self.index_path = Path(index_path)
+        self.metadata_db_path = Path(metadata_db_path)
+        self.model_path = Path(model_path) if model_path else None
+        self.top_k = top_k
+        self.hf_api_token = hf_api_token or _try_env_token()
+        self.hf_model_id = hf_model_id
+        self.ollama_chat_model = ollama_chat_model
 
-    @staticmethod
-    def _build_prompt(query: str, lang: str, chunks: List[Dict[str, str]], plain: bool = False) -> str:
-        if lang == "ar":
-            if plain:
-                instruction = (
-                    "أنت مساعد قانوني مختص في القانون التونسي. "
-                    "أجب بالعربية بناءً فقط على السياق القانوني المعطى. "
-                    "إذا لم تكن الإجابة موجودة في السياق، فقل ذلك بوضوح. "
-                    "استشهد دائمًا بالمصادر مع العنوان والرابط."
-                )
-            else:
-                instruction = (
-                    "You are a legal assistant for Tunisian law. "
-                    "Answer in Arabic using only the provided legal context. "
-                    "If the answer is not in context, explicitly say that. "
-                    "Always cite sources by title and URL."
-                )
-        else:
-            if plain:
-                instruction = (
-                    "Tu es un assistant juridique specialise en droit tunisien. "
-                    "Reponds en francais uniquement avec le contexte fourni. "
-                    "Si l'information est absente, dis-le explicitement. "
-                    "Cite toujours les sources avec titre et URL."
-                )
-            else:
-                instruction = (
-                    "Tu es un assistant juridique specialise en droit tunisien. "
-                    "Reponds en francais en te basant uniquement sur le contexte legal fourni. "
-                    "Si l'information est absente, dis-le explicitement. "
-                    "Cite toujours les sources avec titre et URL."
-                )
-
-        context = "\n\n---\n\n".join(
-            f"[Source: {item['title']} | {item['url']}]\n{item['text']}" for item in chunks
-        )
-
-        if plain:
-            return (
-                f"{instruction}\n\n"
-                f"Contexte legal:\n{context}\n\n"
-                f"Question: {query}\n"
+        # Load FAISS index
+        if not self.index_path.exists():
+            raise FileNotFoundError(
+                f"FAISS index not found: {self.index_path}\n"
+                "Run build_knowledge_base.py first to create the index."
             )
+        self.index: faiss.Index = faiss.read_index(str(self.index_path))
+        logger.info(f"Loaded FAISS index: {self.index.ntotal} vectors")
 
-        return (
-            "<s>[INST] "
-            f"{instruction}\n\n"
-            f"Legal context:\n{context}\n\n"
-            f"Question: {query} "
-            "[/INST]"
-        )
+        # Metadata DB
+        self._db = sqlite3.connect(str(self.metadata_db_path), check_same_thread=False)
+        self._db.row_factory = sqlite3.Row
 
-    @staticmethod
-    def _format_citations(chunks: List[Dict[str, str]], lang: str) -> str:
-        if not chunks:
-            return ""
+        # Embedder (lazy)
+        self._embedder = None
+        self._embed_model_name = embed_model
 
-        unique = []
-        seen = set()
-        for item in chunks:
-            key = (item["title"], item["url"])
-            if key in seen:
+    # ── Public API ────────────────────────────────────────────────────────────
+
+    def retrieve(self, query: str, top_k: int | None = None) -> list[dict]:
+        """Retrieve the top-k most relevant chunks for *query*."""
+        k = top_k or self.top_k
+        emb = self._embed([query])           # (1, D)
+        D, I = self.index.search(emb, k)     # (1, k)
+
+        results = []
+        for rank, (dist, idx) in enumerate(zip(D[0], I[0])):
+            if idx == -1:
                 continue
-            seen.add(key)
-            unique.append(item)
+            meta = self._get_metadata(int(idx))
+            if meta:
+                results.append({
+                    "rank": rank + 1,
+                    "score": float(dist),
+                    "text": meta["chunk_text"],
+                    "source": meta["source_name"],
+                    "url": meta["source_url"],
+                    "language": meta["language"],
+                    "chunk_id": int(idx),
+                })
+        return results
 
-        if lang == "ar":
-            header = "\n\n**المصادر القانونية:**"
-        else:
-            header = "\n\n**Sources juridiques:**"
-
-        lines = [f"- {item['title']} ({item['url']})" for item in unique]
-        return header + "\n" + "\n".join(lines)
-
-    @staticmethod
-    def _fallback_answer(query: str, chunks: List[Dict[str, str]], lang: str) -> str:
-        top = chunks[0]["text"]
-        snippet = top[:700] + ("..." if len(top) > 700 else "")
-
-        if lang == "ar":
-            return (
-                "لم يتم تحميل نموذج لغوي محلي بعد. "
-                "إليك أقرب مقتطف قانوني مرتبط بسؤالك:\n\n"
-                f"{snippet}"
-            )
-
-        return (
-            "Aucun modele local n'est charge pour le moment. "
-            "Voici l'extrait legal le plus pertinent pour votre question:\n\n"
-            f"{snippet}"
-        )
-
-    def answer(self, query: str, k: int = 5, min_score: float = 0.35, max_tokens: int = 512, images: Optional[List[str]] = None) -> Dict[str, object]:
-        lang = detect_language(query)
-        chunks = self.retriever.retrieve(query=query, k=k, min_score=min_score)
-
+    def answer(self, query: str, top_k: int | None = None) -> dict[str, Any]:
+        """Full RAG pipeline: retrieve → build prompt → generate answer."""
+        chunks = self.retrieve(query, top_k)
         if not chunks:
-            if lang == "ar":
-                answer = "لم أجد نصوصا قانونية موثوقة مرتبطة بهذا السؤال."
-            else:
-                answer = "Je n'ai pas trouve de textes juridiques suffisamment pertinents pour cette question."
-            return {"answer": answer, "sources": [], "language": lang}
+            return {
+                "answer": "Je n'ai pas trouvé d'informations pertinentes dans la base de connaissances.",
+                "sources": [],
+                "chunks_used": 0,
+            }
 
-        if self.generator is not None:
-            prompt = self._build_prompt(
-                query=query,
-                lang=lang,
-                chunks=chunks,
-                plain=getattr(self.generator, "is_ollama", False),
-            )
-            try:
-                # Only OllamaGenerator supports images in our new setup
-                if images and hasattr(self.generator, "is_ollama"):
-                    body = self.generator.generate(prompt=prompt, max_tokens=max_tokens, temperature=0.1, images=images)
-                else:
-                    body = self.generator.generate(prompt=prompt, max_tokens=max_tokens, temperature=0.1)
-                error = None
-            except Exception as exc:
-                error = f"{exc.__class__.__name__}: {exc}"
-                body = self._fallback_answer(query=query, chunks=chunks, lang=lang)
-        else:
-            body = self._fallback_answer(query=query, chunks=chunks, lang=lang)
-            error = None
+        context = self._build_context(chunks)
+        prompt = self._build_prompt(query, context)
 
-        citations = self._format_citations(chunks, lang)
-        result = {
-            "answer": body + citations,
-            "sources": [{"title": item["title"], "url": item["url"]} for item in chunks],
-            "language": lang,
-            "error": error,
+        answer_text = self._generate(prompt)
+
+        return {
+            "answer": answer_text,
+            "sources": [{"name": c["source"], "url": c["url"]} for c in chunks],
+            "chunks_used": len(chunks),
+            "retrieved_chunks": chunks,
         }
 
-        if error:
-            print(f"[LegalRagEngine] generation error: {error}")
+    # ── Internal ─────────────────────────────────────────────────────────────
 
-        return result
+    def _embed(self, texts: list[str]) -> np.ndarray:
+        if self._embedder is None:
+            self._embedder = _get_embedder(self._embed_model_name)
+        arr = self._embedder.encode(texts, normalize_embeddings=True)
+        return arr.astype("float32")
 
-    def close(self) -> None:
-        self.retriever.close()
+    def _get_metadata(self, faiss_id: int) -> dict | None:
+        row = self._db.execute(
+            "SELECT * FROM chunks WHERE faiss_id = ?", (faiss_id,)
+        ).fetchone()
+        return dict(row) if row else None
+
+    @staticmethod
+    def _build_context(chunks: list[dict]) -> str:
+        parts = []
+        for c in chunks:
+            snippet = c["text"][:1200]
+            parts.append(
+                f"[Source: {c['source']} - {c['url']}]\n{snippet}"
+            )
+        return "\n\n---\n\n".join(parts)
+
+    @staticmethod
+    def _build_prompt(query: str, context: str) -> str:
+        return (
+            "Tu es MIZAN, un assistant juridique spécialisé en droit tunisien. "
+            "Réponds en te basant UNIQUEMENT sur les extraits fournis. "
+            "Si l'information n'est pas dans les extraits, dis-le clairement. "
+            "Cite les sources que tu utilises.\n\n"
+            f"EXTRAITS JURIDIQUES :\n{context}\n\n"
+            f"QUESTION : {query}\n\n"
+            "RÉPONSE :"
+        )
+
+    def _generate(self, prompt: str) -> str:
+        """Try Ollama → HuggingFace API → fallback message."""
+        # 1. Ollama (local, preferred)
+        try:
+            return _ollama_generate(prompt, self.ollama_chat_model)
+        except Exception as e:
+            logger.warning(f"Ollama generation failed ({e}). Trying HuggingFace API…")
+
+        # 2. HuggingFace Inference API (free tier)
+        if self.hf_api_token:
+            try:
+                return _hf_generate(prompt, self.hf_model_id, self.hf_api_token)
+            except Exception as e:
+                logger.warning(f"HuggingFace API failed ({e}).")
+
+        # 3. Graceful degradation — return retrieved context summary
+        return (
+            "[LLM non disponible — réponse basée sur les extraits récupérés]\n"
+            + prompt.split("RÉPONSE :")[0].split("EXTRAITS JURIDIQUES :")[-1][:500]
+        )
+
+    def close(self):
+        self._db.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        self.close()
+
+
+# ─── LLM helpers ─────────────────────────────────────────────────────────────
+
+def _ollama_generate(prompt: str, model: str, timeout: int = 120) -> str:
+    import requests
+    resp = requests.post(
+        "http://localhost:11434/api/generate",
+        json={"model": model, "prompt": prompt, "stream": False, "think": False,
+              "options": {"temperature": 0.1, "num_predict": 128, "hidethinking": True}},
+        timeout=timeout,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    text = (data.get("response") or data.get("thinking") or "").strip()
+    if not text:
+        raise RuntimeError(f"Ollama returned empty output. Raw payload: {data}")
+    return text
+
+
+def _hf_generate(prompt: str, model_id: str, token: str, timeout: int = 60) -> str:
+    import requests
+    resp = requests.post(
+        f"https://api-inference.huggingface.co/models/{model_id}",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"inputs": prompt, "parameters": {"max_new_tokens": 512, "temperature": 0.1}},
+        timeout=timeout,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    if isinstance(data, list) and data:
+        text = data[0].get("generated_text", "")
+        # Strip the prompt echo if present
+        if text.startswith(prompt):
+            text = text[len(prompt):]
+        return text.strip()
+    return str(data)
+
+
+def _try_env_token() -> str | None:
+    import os
+    return os.environ.get("HF_API_KEY") or os.environ.get("HUGGINGFACE_TOKEN")
