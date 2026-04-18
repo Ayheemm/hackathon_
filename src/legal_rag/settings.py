@@ -4,7 +4,9 @@ from typing import Optional
 
 
 DEFAULT_START_URL = "https://www.justice.gov.tn/index.php?id=223"
-DEFAULT_EMBEDDING_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+DEFAULT_EMBEDDING_MODEL = "nomic-embed-text-v2-moe"
+DEFAULT_CHAT_MODEL = "qwen3.5:4b"
+DEFAULT_VISION_MODEL = "medgemma:4b"
 
 
 @dataclass(frozen=True)

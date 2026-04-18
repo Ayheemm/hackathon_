@@ -10,7 +10,6 @@ class FaissRetriever:
         try:
             import faiss
             import numpy as np
-            from sentence_transformers import SentenceTransformer
         except ImportError as exc:
             raise ImportError(
                 "Missing retrieval dependencies. Install requirements.txt before querying the chatbot."
@@ -23,8 +22,15 @@ class FaissRetriever:
 
         self._np = np
         self.index = faiss.read_index(str(index_path))
-        self.conn = sqlite3.connect(metadata_db_path)
-        self.embedding_model = SentenceTransformer(embedding_model_name)
+        self.conn = sqlite3.connect(metadata_db_path, check_same_thread=False)
+        
+        self.embedding_model_name = embedding_model_name
+        if "sentence-transformers" in embedding_model_name or "/" in embedding_model_name:
+            from sentence_transformers import SentenceTransformer
+            self.embedding_model = SentenceTransformer(embedding_model_name)
+        else:
+            from .embeddings import OllamaEmbedder
+            self.embedding_model = OllamaEmbedder(embedding_model_name)
 
     def _fetch_metadata(self, chunk_id: int) -> Dict[str, str]:
         row = self.conn.execute(

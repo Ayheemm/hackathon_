@@ -45,11 +45,17 @@ def build_index(clean_jsonl: Path, faiss_index_path: Path, metadata_db: Path, co
     try:
         import faiss
         import numpy as np
-        from sentence_transformers import SentenceTransformer
     except ImportError as exc:
         raise ImportError(
             "Missing ML dependencies. Install requirements.txt before building the index."
         ) from exc
+
+    try:
+        from sentence_transformers import SentenceTransformer
+    except ImportError:
+        pass
+
+    from .embeddings import OllamaEmbedder
 
     rows: List[Dict[str, str]] = []
     texts: List[str] = []
@@ -77,13 +83,29 @@ def build_index(clean_jsonl: Path, faiss_index_path: Path, metadata_db: Path, co
     if not texts:
         raise ValueError("No chunks generated. Verify scraping and cleaning outputs.")
 
-    model = SentenceTransformer(config.embedding_model_name)
-    embeddings = model.encode(
-        texts,
-        batch_size=config.batch_size,
-        show_progress_bar=True,
-        normalize_embeddings=True,
-    )
+    print(f"Generating embeddings using {config.embedding_model_name}...")
+    if "sentence-transformers" in config.embedding_model_name or "/" in config.embedding_model_name:
+        model = SentenceTransformer(config.embedding_model_name)
+        embeddings = model.encode(
+            texts,
+            batch_size=config.batch_size,
+            show_progress_bar=True,
+            normalize_embeddings=True,
+        )
+    else:
+        # Use Ollama Embeddings
+        model = OllamaEmbedder(config.embedding_model_name)
+        
+        # Process in batches to avoid payload overloading
+        batch_size = config.batch_size
+        embeddings = []
+        for i in tqdm(range(0, len(texts), batch_size), desc="Embedding batches"):
+            batch = texts[i:i+batch_size]
+            emb = model.encode(batch, normalize_embeddings=True)
+            if len(embeddings) == 0:
+                embeddings = emb
+            else:
+                embeddings = np.vstack((embeddings, emb))
 
     vectors = np.asarray(embeddings, dtype="float32")
     index = faiss.IndexFlatIP(vectors.shape[1])

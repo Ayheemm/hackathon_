@@ -17,7 +17,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--delay", type=float, default=1.5, help="Delay between HTTP requests in seconds")
     parser.add_argument("--skip-scrape", action="store_true", help="Skip scraping and reuse existing raw JSONL")
     parser.add_argument("--skip-clean", action="store_true", help="Skip cleaning and reuse existing clean JSONL")
-    parser.add_argument("--embedding-model", default=None, help="Override sentence-transformers model")
+    parser.add_argument("--embedding-model", default="nomic-embed-text-v2-moe", help="Override embedding model")
     parser.add_argument("--chunk-size", type=int, default=400, help="Chunk size in words")
     parser.add_argument("--chunk-overlap", type=int, default=80, help="Chunk overlap in words")
     return parser.parse_args()
