@@ -123,17 +123,18 @@ export default function ChatWindow({ messages, onExampleSelect, backendUnavailab
   if (messages.length === 0) {
     return (
       <div className="flex h-full items-center justify-center px-6 pb-40 pt-8">
-        <div className="mx-auto max-w-4xl rounded-[12px] border border-[0.5px] border-[var(--border-gold)] bg-[var(--bg-card)] p-8 text-center shadow-soft">
+        <div className="mx-auto max-w-4xl rounded-[18px] border border-[0.5px] border-[var(--border-gold)] bg-[var(--surface-2)] p-8 text-center shadow-lift">
           <Image
-            src="/logo-gavel.svg"
+            src="/logo-gavel.png"
             alt="9anouni logo"
-            width={74}
-            height={74}
-            className="mx-auto mb-4 h-[74px] w-[74px] rounded-[10px] bg-[var(--bg-mid)] p-2 object-contain"
+            width={40}
+            height={40}
+            className="mx-auto mb-4 h-10 w-10 object-contain"
             priority
+            unoptimized
           />
-          <h2 className="font-fr text-xl font-semibold text-[var(--text-dark)]">9anouni</h2>
-          <p className="mt-2 text-sm text-[var(--bg-dark)]">Assistant juridique bilingue pour textes légaux tunisiens</p>
+          <h2 className="font-fr text-2xl font-semibold text-[var(--text-dark)]">9anouni</h2>
+          <p className="mt-2 text-sm text-[var(--ink-soft)]">Assistant juridique bilingue pour textes légaux tunisiens</p>
           <div className="mx-auto mt-4 h-px w-16 bg-[var(--border-gold)]" />
 
           <div className="mt-6 grid gap-3 md:grid-cols-2">
@@ -145,7 +146,7 @@ export default function ChatWindow({ messages, onExampleSelect, backendUnavailab
                     key={example}
                     type="button"
                     onClick={() => onExampleSelect(example)}
-                    className="w-full rounded-md border border-[0.5px] border-[rgba(212,160,80,0.27)] bg-[var(--bg-main)] px-3 py-2 text-right text-sm font-ar text-[var(--text-dark)] transition hover:border-[rgba(212,160,80,0.4)] hover:bg-[rgba(212,160,80,0.09)]"
+                    className="w-full rounded-md border border-[0.5px] border-[rgba(212,160,80,0.27)] bg-[var(--surface-0)] px-3 py-2 text-right text-sm font-ar text-[var(--text-dark)] transition hover:border-[rgba(212,160,80,0.42)] hover:bg-[rgba(212,160,80,0.13)]"
                     aria-label="Utiliser cet exemple / استخدام هذا المثال"
                   >
                     {example}
@@ -162,7 +163,7 @@ export default function ChatWindow({ messages, onExampleSelect, backendUnavailab
                     key={example}
                     type="button"
                     onClick={() => onExampleSelect(example)}
-                    className="w-full rounded-md border border-[0.5px] border-[rgba(212,160,80,0.27)] bg-[var(--bg-main)] px-3 py-2 text-left text-sm font-fr text-[var(--text-dark)] transition hover:border-[rgba(212,160,80,0.4)] hover:bg-[rgba(212,160,80,0.09)]"
+                    className="w-full rounded-md border border-[0.5px] border-[rgba(212,160,80,0.27)] bg-[var(--surface-0)] px-3 py-2 text-left text-sm font-fr text-[var(--text-dark)] transition hover:border-[rgba(212,160,80,0.42)] hover:bg-[rgba(212,160,80,0.13)]"
                     aria-label="Utiliser cet exemple / استخدام هذا المثال"
                   >
                     {example}
@@ -179,12 +180,12 @@ export default function ChatWindow({ messages, onExampleSelect, backendUnavailab
   return (
     <div className="h-full overflow-hidden">
       {backendUnavailable ? (
-        <div className="mx-4 mt-4 flex items-center justify-between rounded-lg border border-[0.5px] border-[rgba(212,160,80,0.27)] bg-[rgba(212,160,80,0.13)] px-3 py-2 text-sm text-[var(--bg-dark)] md:mx-6">
+        <div className="mx-4 mt-4 flex items-center justify-between rounded-lg border border-[0.5px] border-[rgba(166,90,0,0.38)] bg-[rgba(166,90,0,0.14)] px-3 py-2 text-sm text-[var(--state-warning)] md:mx-6">
           <span className="font-fr">الخادم غير متاح حالياً / Serveur non disponible</span>
           <button
             type="button"
             onClick={onRetry}
-            className="inline-flex items-center gap-1 rounded-md border border-[0.5px] border-[rgba(212,160,80,0.27)] px-2 py-1 text-xs font-medium hover:bg-[rgba(212,160,80,0.13)]"
+            className="inline-flex items-center gap-1 rounded-md border border-[0.5px] border-[rgba(166,90,0,0.4)] px-2 py-1 text-xs font-semibold hover:bg-[rgba(166,90,0,0.14)]"
             aria-label="Réessayer / إعادة المحاولة"
           >
             <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
@@ -219,7 +220,7 @@ export default function ChatWindow({ messages, onExampleSelect, backendUnavailab
                 >
                   {row.type === "separator" ? (
                     <div className="my-2 flex justify-center">
-                      <span className="rounded-full border border-[0.5px] border-[var(--border-gold)] bg-[var(--bg-main)] px-3 py-1 text-xs text-[var(--text-muted)]">{row.label}</span>
+                      <span className="rounded-full border border-[0.5px] border-[var(--border-gold)] bg-[var(--surface-0)] px-3 py-1 text-xs font-medium text-[var(--text-muted)]">{row.label}</span>
                     </div>
                   ) : (
                     <MessageBubble
@@ -240,7 +241,7 @@ export default function ChatWindow({ messages, onExampleSelect, backendUnavailab
             {rows.map((row) =>
               row.type === "separator" ? (
                 <div key={row.id} className="my-2 flex justify-center">
-                  <span className="rounded-full border border-[0.5px] border-[var(--border-gold)] bg-[var(--bg-main)] px-3 py-1 text-xs text-[var(--text-muted)]">{row.label}</span>
+                  <span className="rounded-full border border-[0.5px] border-[var(--border-gold)] bg-[var(--surface-0)] px-3 py-1 text-xs font-medium text-[var(--text-muted)]">{row.label}</span>
                 </div>
               ) : (
                 <MessageBubble

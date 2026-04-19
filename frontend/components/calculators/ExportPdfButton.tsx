@@ -61,7 +61,7 @@ export default function ExportPdfButton({ fileName, title, lines }: ExportPdfBut
       onClick={() => {
         void handleExport();
       }}
-      className="inline-flex rounded-lg border border-[rgba(212,160,80,0.33)] bg-[var(--bg-card)] px-3 py-2 text-sm font-semibold text-[var(--bg-dark)] transition hover:bg-[rgba(212,160,80,0.07)]"
+      className="inline-flex rounded-lg border border-[rgba(212,160,80,0.33)] bg-[var(--surface-2)] px-3 py-2 text-sm font-semibold text-[var(--text-dark)] transition hover:bg-[var(--surface-3)]"
       disabled={loading}
     >
       {loading ? "Generation PDF..." : "Export PDF"}

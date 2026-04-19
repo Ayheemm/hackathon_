@@ -59,18 +59,18 @@ function SidebarContent({
   onDeleteConversation,
 }: Omit<SidebarProps, "mobileOpen" | "onCloseMobile">) {
   return (
-    <div className="flex h-full flex-col bg-[var(--bg-deep)] text-[var(--text-light)]">
+    <div className="flex h-full flex-col bg-[linear-gradient(180deg,rgba(30,14,4,0.98),rgba(61,30,8,0.96))] text-[var(--text-light)]">
       <div className="border-b border-[0.5px] border-[var(--border-gold)] px-4 py-4">
         <div className="flex items-center gap-2">
-          <div className="rounded-[10px] bg-[var(--bg-mid)] p-2">
-            <Image src="/logo-gavel.svg" alt="9anouni logo" width={36} height={36} className="h-9 w-9 object-contain" priority />
+          <div className="rounded-[10px] p-1">
+            <Image src="/logo-gavel.png" alt="9anouni logo" width={40} height={40} className="h-10 w-10 object-contain" priority unoptimized />
           </div>
           <h1 className="font-fr text-lg font-semibold text-[var(--text-light)]">9anouni / قانوني</h1>
         </div>
         <button
           type="button"
           onClick={onNewConversation}
-          className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--accent)] px-3 py-2 text-sm font-medium text-[var(--text-dark)] transition hover:opacity-90"
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-[rgba(212,160,80,0.34)] bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-[var(--text-dark)] transition hover:brightness-95"
           aria-label="Nouvelle conversation / محادثة جديدة"
         >
           <Plus className="h-4 w-4" aria-hidden="true" />
@@ -80,7 +80,7 @@ function SidebarContent({
         <div className="mt-2 grid gap-2">
           <Link
             href="/calculators"
-            className="inline-flex items-center justify-center rounded-lg border border-[0.5px] border-[rgba(212,160,80,0.27)] bg-transparent px-3 py-2 text-xs font-semibold text-[var(--text-muted)] transition hover:bg-[rgba(212,160,80,0.07)]"
+            className="inline-flex items-center justify-center rounded-lg border border-[0.5px] border-[rgba(212,160,80,0.3)] bg-[rgba(255,248,234,0.06)] px-3 py-2 text-xs font-semibold text-[var(--accent-300)] transition hover:bg-[rgba(255,248,234,0.12)]"
           >
             Mirath Calculator
           </Link>
@@ -104,19 +104,19 @@ function SidebarContent({
                     onClick={() => onSelectConversation(conversation.id)}
                     className={`w-full rounded-md border px-3 py-2 text-left transition ${
                       isActive
-                        ? "border-[rgba(212,160,80,0.2)] border-l-2 border-l-[var(--accent)] bg-[rgba(212,160,80,0.13)] shadow-soft"
-                        : "border-transparent bg-transparent hover:border-[rgba(212,160,80,0.2)] hover:bg-[rgba(212,160,80,0.07)]"
+                          ? "border-[rgba(212,160,80,0.38)] border-l-2 border-l-[var(--accent)] bg-[rgba(212,160,80,0.16)] shadow-soft"
+                          : "border-transparent bg-transparent hover:border-[rgba(212,160,80,0.2)] hover:bg-[rgba(255,248,234,0.1)]"
                     }`}
                     aria-label="Ouvrir la conversation / فتح المحادثة"
                   >
                     <p className="truncate text-sm font-medium text-[var(--text-light)]">{conversationTitle(conversation)}</p>
-                    <p className="mt-1 text-xs text-[var(--text-muted)]">{relativeTimeLabel(conversation.updatedAt, lang)}</p>
+                      <p className="mt-1 text-xs text-[var(--accent-300)]">{relativeTimeLabel(conversation.updatedAt, lang)}</p>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => onDeleteConversation(conversation.id)}
-                    className="absolute right-2 top-2 rounded p-1 text-[var(--text-muted)] opacity-0 transition hover:bg-[rgba(212,160,80,0.07)] hover:text-[var(--text-light)] group-hover:opacity-100"
+                    className="absolute right-2 top-2 rounded p-1 text-[var(--accent-300)] opacity-0 transition hover:bg-[rgba(255,248,234,0.1)] hover:text-[var(--text-light)] group-hover:opacity-100"
                     aria-label="Supprimer / حذف"
                   >
                     <Trash2 className="h-4 w-4" aria-hidden="true" />
@@ -129,7 +129,7 @@ function SidebarContent({
       </div>
 
       <div className="border-t border-[0.5px] border-[var(--border-gold)] px-4 py-3">
-        <p className="font-fr text-xs text-[var(--text-muted)]">Données issues du Ministère de la Justice TN</p>
+        <p className="font-fr text-xs text-[var(--accent-300)]">Données issues du Ministère de la Justice TN</p>
       </div>
     </div>
   );
@@ -164,7 +164,7 @@ export default function Sidebar({
       </div>
 
       <aside
-        className={`fixed inset-x-0 bottom-0 z-50 h-[78vh] rounded-t-2xl border border-[0.5px] border-[var(--border-gold)] bg-[var(--bg-deep)] shadow-soft transition-transform md:hidden ${
+        className={`fixed inset-x-0 bottom-0 z-50 h-[78vh] rounded-t-2xl border border-[0.5px] border-[var(--border-gold)] bg-[var(--bg-deep)] shadow-lift transition-transform md:hidden ${
           mobileOpen ? "translate-y-0" : "translate-y-full"
         }`}
       >

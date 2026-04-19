@@ -78,8 +78,8 @@ export default function MessageBubble({ role, content, lang, sources = [], warni
   const assistantRadius = isArabic ? "rounded-[4px_18px_18px_18px]" : "rounded-[18px_18px_18px_4px]";
 
   const bubbleClass = isUser
-    ? `bg-[var(--bg-dark)] text-[var(--text-light)] ${userRadius}`
-    : `bg-[var(--bg-card)] border border-[0.5px] border-[var(--border-gold)] text-[var(--text-dark)] ${assistantRadius}`;
+    ? `bg-[linear-gradient(145deg,rgba(30,14,4,0.98),rgba(61,30,8,0.98))] text-[var(--text-light)] ${userRadius}`
+    : `bg-[var(--surface-2)] border border-[0.5px] border-[var(--border-gold)] text-[var(--text-dark)] ${assistantRadius}`;
 
   return (
     <div className={`message-in flex w-full flex-col ${isUser ? "items-end" : "items-start"} gap-1`}>
@@ -110,7 +110,7 @@ export default function MessageBubble({ role, content, lang, sources = [], warni
       </div>
 
       {!isThinking ? (
-        <div className={`flex items-center gap-2 text-xs text-[var(--bg-mid)] ${isUser ? "pr-1" : "pl-1"}`}>
+        <div className={`flex items-center gap-2 text-xs text-[var(--ink-soft)] ${isUser ? "pr-1" : "pl-1"}`}>
           <LanguageBadge lang={lang} />
           <span>{timeLabel}</span>
         </div>

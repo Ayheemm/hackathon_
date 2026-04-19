@@ -42,7 +42,7 @@ export default function ChatPage() {
   }, []);
 
   return (
-    <div className="h-screen bg-[var(--bg-main)] text-[var(--text-dark)]">
+    <div className="h-screen text-[var(--text-dark)]">
       <Sidebar
         conversations={conversations}
         activeConversationId={conversationId}
@@ -62,7 +62,7 @@ export default function ChatPage() {
       />
 
       <div className="flex h-full flex-col md:ml-[280px]">
-        <header className="flex h-16 items-center justify-between border-b border-[0.5px] border-[var(--border-gold)] bg-[var(--bg-dark)] px-4 md:px-6">
+        <header className="flex h-16 items-center justify-between border-b border-[0.5px] border-[var(--border-gold)] bg-[linear-gradient(90deg,rgba(30,14,4,0.97),rgba(61,30,8,0.96))] px-4 md:px-6">
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -72,13 +72,13 @@ export default function ChatPage() {
             >
               <Menu className="h-5 w-5" aria-hidden="true" />
             </button>
-            <h2 className="font-mono-legal text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">9ANOUNI</h2>
+            <h2 className="font-mono-legal text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent-300)]">9ANOUNI</h2>
           </div>
 
           <div className="flex items-center gap-1">
             <Link
               href="/calculators"
-              className="inline-flex items-center gap-1 rounded-md border border-[0.5px] border-[var(--border-gold)] bg-[rgba(212,160,80,0.07)] px-2.5 py-1.5 text-xs font-medium text-[var(--text-light)] transition hover:bg-[rgba(212,160,80,0.13)]"
+              className="inline-flex items-center gap-1 rounded-md border border-[0.5px] border-[rgba(212,160,80,0.38)] bg-[rgba(212,160,80,0.14)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-light)] transition hover:bg-[rgba(212,160,80,0.22)]"
             >
               Mirath Calculator
             </Link>
@@ -89,7 +89,7 @@ export default function ChatPage() {
                 setSeedValue("");
                 startNewConversation();
               }}
-              className="inline-flex items-center gap-1 rounded-md border border-[0.5px] border-[var(--border-gold)] bg-[rgba(212,160,80,0.07)] px-2.5 py-1.5 text-xs font-medium text-[var(--text-light)] transition hover:bg-[rgba(212,160,80,0.13)]"
+              className="inline-flex items-center gap-1 rounded-md border border-[0.5px] border-[rgba(212,160,80,0.38)] bg-[rgba(255,248,234,0.07)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-light)] transition hover:bg-[rgba(255,248,234,0.14)]"
               aria-label="Nouvelle conversation / محادثة جديدة"
             >
               <Plus className="h-3.5 w-3.5" aria-hidden="true" />
@@ -102,7 +102,7 @@ export default function ChatPage() {
                 setSeedValue("");
                 clearHistory();
               }}
-              className="inline-flex items-center gap-1 rounded-md border border-[0.5px] border-[var(--border-gold)] bg-[rgba(212,160,80,0.07)] px-2.5 py-1.5 text-xs font-medium text-[var(--text-light)] transition hover:bg-[rgba(212,160,80,0.13)]"
+              className="inline-flex items-center gap-1 rounded-md border border-[0.5px] border-[rgba(212,160,80,0.38)] bg-[rgba(143,29,29,0.18)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-light)] transition hover:bg-[rgba(143,29,29,0.28)]"
               aria-label="Effacer l'historique / مسح السجل"
             >
               <Trash className="h-3.5 w-3.5" aria-hidden="true" />

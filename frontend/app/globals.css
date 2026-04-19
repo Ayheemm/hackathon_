@@ -3,19 +3,40 @@
 @tailwind utilities;
 
 :root {
-  --font-fr: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  --font-ar: "Noto Naskh Arabic", "Amiri", Tahoma, serif;
-  --font-mono: "Cascadia Mono", Consolas, "Courier New", monospace;
-  --bg-deep:      #1E0E04;
-  --bg-dark:      #3D1E08;
-  --bg-mid:       #7A4010;
-  --accent:       #D4A050;
-  --bg-main:      #FDF5E6;
-  --bg-card:      #FFFFFF;
-  --border-gold:  rgba(212, 160, 80, 0.2);
-  --text-light:   #FDF5E6;
-  --text-dark:    #1E0E04;
-  --text-muted:   #D4A050;
+  --font-fr: "IBM Plex Sans", "Segoe UI", "Helvetica Neue", sans-serif;
+  --font-ar: "Noto Naskh Arabic", "Amiri", "Times New Roman", serif;
+  --font-mono: "Cascadia Mono", "JetBrains Mono", Consolas, monospace;
+
+  --ink-strong: #1E0E04;
+  --ink-default: #2B1607;
+  --ink-soft: #5C3A21;
+
+  --surface-0: #FDF5E6;
+  --surface-1: #FFFDF8;
+  --surface-2: #FFFFFF;
+  --surface-3: #F6EBDD;
+
+  --brand-900: #1E0E04;
+  --brand-700: #3D1E08;
+  --brand-500: #7A4010;
+  --accent-500: #D4A050;
+  --accent-300: #E7C98E;
+
+  --state-success: #1F6B46;
+  --state-warning: #A65A00;
+  --state-danger: #8F1D1D;
+  --state-info: #245C9A;
+
+  --bg-deep: var(--brand-900);
+  --bg-dark: var(--brand-700);
+  --bg-mid: var(--brand-500);
+  --accent: var(--accent-500);
+  --bg-main: var(--surface-0);
+  --bg-card: var(--surface-2);
+  --border-gold: rgba(212, 160, 80, 0.24);
+  --text-light: #FFF8EA;
+  --text-dark: var(--ink-strong);
+  --text-muted: #7A4B1E;
 }
 
 * {
@@ -29,9 +50,17 @@ body {
 
 body {
   margin: 0;
-  background-color: var(--bg-main);
+  background:
+    radial-gradient(1200px 500px at 10% -20%, rgba(212, 160, 80, 0.2), transparent 60%),
+    radial-gradient(1200px 500px at 110% 10%, rgba(61, 30, 8, 0.1), transparent 55%),
+    linear-gradient(180deg, var(--surface-1) 0%, var(--surface-0) 48%, var(--surface-3) 100%);
   color: var(--text-dark);
   overflow-x: hidden;
+}
+
+::selection {
+  background: rgba(212, 160, 80, 0.22);
+  color: var(--ink-strong);
 }
 
 .font-ar {

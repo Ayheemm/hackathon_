@@ -73,11 +73,11 @@ export default function InputBar({ isLoading, seedValue, onSubmit }: InputBarPro
   };
 
   return (
-    <div className="border-t border-[0.5px] border-[rgba(212,160,80,0.13)] bg-[var(--bg-dark)] px-4 pb-[calc(env(safe-area-inset-bottom)+0.8rem)] pt-3 md:px-6">
-      <div className="mx-auto flex w-full max-w-5xl items-end gap-3 rounded-xl border border-[0.5px] border-[var(--border-gold)] bg-[rgba(212,160,80,0.07)] p-3 shadow-soft">
+    <div className="border-t border-[0.5px] border-[rgba(212,160,80,0.2)] bg-[linear-gradient(180deg,rgba(30,14,4,0.97),rgba(61,30,8,0.96))] px-4 pb-[calc(env(safe-area-inset-bottom)+0.8rem)] pt-3 md:px-6">
+      <div className="mx-auto flex w-full max-w-5xl items-end gap-3 rounded-xl border border-[0.5px] border-[var(--border-gold)] bg-[rgba(255,248,234,0.08)] p-3 shadow-lift">
         <div className="mb-2 shrink-0">
           <span
-            className={`inline-flex rounded-full border border-[0.5px] border-[rgba(212,160,80,0.27)] bg-[rgba(212,160,80,0.13)] px-2 py-1 text-xs font-semibold text-[var(--text-muted)] ${
+            className={`inline-flex rounded-full border border-[0.5px] border-[rgba(212,160,80,0.33)] bg-[rgba(212,160,80,0.2)] px-2 py-1 text-xs font-semibold text-[var(--text-light)] ${
               detectedLang === "ar" ? "font-ar" : "font-fr"
             }`}
             aria-label="Langue détectée / اللغة المكتشفة"
@@ -100,7 +100,7 @@ export default function InputBar({ isLoading, seedValue, onSubmit }: InputBarPro
               }
             }}
             placeholder={PLACEHOLDERS[placeholderIndex]}
-            className="max-h-[152px] min-h-[40px] w-full resize-none overflow-y-auto rounded-md border border-[0.5px] border-[rgba(212,160,80,0.13)] bg-[rgba(255,255,255,0.06)] px-2 py-1 text-sm text-[var(--text-light)] outline-none placeholder:text-[rgba(253,245,230,0.35)]"
+            className="max-h-[152px] min-h-[40px] w-full resize-none overflow-y-auto rounded-md border border-[0.5px] border-[rgba(212,160,80,0.23)] bg-[rgba(255,253,248,0.12)] px-2 py-1 text-sm text-[var(--text-light)] outline-none placeholder:text-[rgba(255,248,234,0.45)] focus:border-[rgba(212,160,80,0.55)]"
             aria-label="Question juridique / سؤال قانوني"
           />
 
