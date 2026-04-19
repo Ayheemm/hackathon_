@@ -55,6 +55,26 @@ To make it more hackathon-reliable in practice, this implementation adds:
 	`-- NOTEBOOK_INTEGRATION.md
 ```
 
+## Open Frontend With TODO List (Windows PowerShell)
+
+Use this command whenever you open the project and want to see pending tasks plus launch the frontend:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\open_frontend.ps1
+```
+
+Shortcut on Windows:
+
+```powershell
+.\open.bat
+```
+
+What it does:
+
+- Prints unchecked items from `TODO.md`.
+- Opens `http://localhost:3000/chat` in your browser.
+- Starts the Next.js frontend dev server from `frontend/`.
+
 ## Local Setup (Windows PowerShell)
 
 ```powershell

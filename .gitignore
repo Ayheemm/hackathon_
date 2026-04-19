@@ -24,3 +24,8 @@ models/*.gguf
 
 # Logs
 *.log
+
+# Frontend dependencies and build artifacts
+frontend/node_modules/
+frontend/.next/
+frontend/out/
