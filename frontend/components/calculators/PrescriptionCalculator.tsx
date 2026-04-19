@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import CalculatorCard from "./CalculatorCard";
 import ExportPdfButton from "./ExportPdfButton";
@@ -9,6 +9,19 @@ import StatusPill from "./StatusPill";
 import { CLAIM_LABELS } from "../../lib/calculators/labels";
 import { calculatePrescription } from "../../lib/calculators/prescription";
 import type { ClaimType, InterruptionEvent, PrescriptionResult, SuspensionCause } from "../../lib/calculators/types";
+
+type ClaimCategory = "civil" | "penal";
+
+const CIVIL_CLAIMS: ClaimType[] = [
+  "civil_personal_general",
+  "civil_liability",
+  "civil_commercial",
+  "civil_rent_payment",
+  "civil_contract_nullity",
+  "civil_alimony",
+];
+
+const PENAL_CLAIMS: ClaimType[] = ["penal_crime", "penal_delit", "penal_contravention"];
 
 type SuspensionForm = {
   id: string;
@@ -35,12 +48,22 @@ function formatDate(date: Date): string {
 }
 
 export default function PrescriptionCalculator() {
-  const [claimType, setClaimType] = useState<ClaimType>("civil_contract");
+  const [claimCategory, setClaimCategory] = useState<ClaimCategory>("civil");
+  const [claimType, setClaimType] = useState<ClaimType>("civil_personal_general");
   const [startDate, setStartDate] = useState(todayString());
+  const [adjustmentsEnabled, setAdjustmentsEnabled] = useState(false);
   const [suspensions, setSuspensions] = useState<SuspensionForm[]>([]);
   const [interruptions, setInterruptions] = useState<InterruptionForm[]>([]);
   const [result, setResult] = useState<PrescriptionResult | null>(null);
   const [error, setError] = useState("");
+
+  const availableClaims = claimCategory === "civil" ? CIVIL_CLAIMS : PENAL_CLAIMS;
+
+  useEffect(() => {
+    if (!availableClaims.includes(claimType)) {
+      setClaimType(availableClaims[0]);
+    }
+  }, [availableClaims, claimType]);
 
   const explanationSeed = useMemo(() => {
     if (!result) {
@@ -116,8 +139,8 @@ export default function PrescriptionCalculator() {
       calculatePrescription({
         claimType,
         startDate: parsedStart,
-        suspensions: parsedSuspensions,
-        interruptions: parsedInterruptions,
+        suspensions: adjustmentsEnabled ? parsedSuspensions : [],
+        interruptions: adjustmentsEnabled ? parsedInterruptions : [],
       }),
     );
   };
@@ -130,22 +153,38 @@ export default function PrescriptionCalculator() {
       >
         <div className="grid gap-4 md:grid-cols-2">
           <label className="space-y-1 text-sm">
-            <span className="font-medium text-[var(--text-dark)]">Type de demande</span>
+            <span className="font-medium text-[var(--text-dark)]">Type</span>
+            <select
+              value={claimCategory}
+              onChange={(event) => {
+                const nextCategory = event.target.value as ClaimCategory;
+                setClaimCategory(nextCategory);
+                setClaimType((nextCategory === "civil" ? CIVIL_CLAIMS : PENAL_CLAIMS)[0]);
+              }}
+              className="w-full rounded-lg border border-[rgba(212,160,80,0.27)] bg-[var(--bg-card)] px-3 py-2 text-sm"
+            >
+              <option value="civil">Civil / مدني</option>
+              <option value="penal">Penal / جزائي</option>
+            </select>
+          </label>
+
+          <label className="space-y-1 text-sm">
+            <span className="font-medium text-[var(--text-dark)]">Nature de l'action</span>
             <select
               value={claimType}
               onChange={(event) => setClaimType(event.target.value as ClaimType)}
               className="w-full rounded-lg border border-[rgba(212,160,80,0.27)] bg-[var(--bg-card)] px-3 py-2 text-sm"
             >
-              {Object.entries(CLAIM_LABELS).map(([value, labels]) => (
+              {availableClaims.map((value) => (
                 <option key={value} value={value}>
-                  {labels.fr} / {labels.ar}
+                  {CLAIM_LABELS[value].fr} / {CLAIM_LABELS[value].ar}
                 </option>
               ))}
             </select>
           </label>
 
           <label className="space-y-1 text-sm">
-            <span className="font-medium text-[var(--text-dark)]">Date de depart</span>
+            <span className="font-medium text-[var(--text-dark)]">Date du fait generateur</span>
             <input
               type="date"
               value={startDate}
@@ -153,9 +192,22 @@ export default function PrescriptionCalculator() {
               className="w-full rounded-lg border border-[rgba(212,160,80,0.27)] bg-[var(--bg-card)] px-3 py-2 text-sm"
             />
           </label>
+
+          <label className="space-y-1 text-sm">
+            <span className="font-medium text-[var(--text-dark)]">Interruptions / Suspensions</span>
+            <button
+              type="button"
+              onClick={() => setAdjustmentsEnabled((previous) => !previous)}
+              className="inline-flex w-full items-center justify-between rounded-lg border border-[rgba(212,160,80,0.27)] bg-[var(--bg-card)] px-3 py-2 text-left text-sm"
+            >
+              <span>{adjustmentsEnabled ? "Actives" : "Inactives"}</span>
+              <span className="text-xs text-[var(--text-muted)]">{adjustmentsEnabled ? "ON" : "OFF"}</span>
+            </button>
+          </label>
         </div>
 
-        <div className="mt-4 rounded-[12px] border border-[0.5px] border-[var(--border-gold)] bg-[var(--bg-main)] p-3">
+        {adjustmentsEnabled ? (
+          <div className="mt-4 rounded-[12px] border border-[0.5px] border-[var(--border-gold)] bg-[var(--bg-main)] p-3">
           <div className="mb-2 flex items-center justify-between">
             <p className="text-sm font-semibold text-[var(--text-dark)]">Suspensions</p>
             <button
@@ -220,9 +272,11 @@ export default function PrescriptionCalculator() {
             ))}
             {suspensions.length === 0 ? <p className="text-xs text-[var(--text-muted)]">Aucune suspension ajoutee.</p> : null}
           </div>
-        </div>
+          </div>
+        ) : null}
 
-        <div className="mt-3 rounded-[12px] border border-[0.5px] border-[var(--border-gold)] bg-[var(--bg-main)] p-3">
+        {adjustmentsEnabled ? (
+          <div className="mt-3 rounded-[12px] border border-[0.5px] border-[var(--border-gold)] bg-[var(--bg-main)] p-3">
           <div className="mb-2 flex items-center justify-between">
             <p className="text-sm font-semibold text-[var(--text-dark)]">Interruptions</p>
             <button
@@ -276,7 +330,8 @@ export default function PrescriptionCalculator() {
             ))}
             {interruptions.length === 0 ? <p className="text-xs text-[var(--text-muted)]">Aucune interruption ajoutee.</p> : null}
           </div>
-        </div>
+          </div>
+        ) : null}
 
         <div className="mt-4 flex items-center gap-2">
           <button
@@ -291,8 +346,10 @@ export default function PrescriptionCalculator() {
             onClick={() => {
               setResult(null);
               setError("");
-              setClaimType("civil_contract");
+              setClaimCategory("civil");
+              setClaimType("civil_personal_general");
               setStartDate(todayString());
+              setAdjustmentsEnabled(false);
               setSuspensions([]);
               setInterruptions([]);
             }}
@@ -327,6 +384,12 @@ export default function PrescriptionCalculator() {
             <span className="rounded-full border border-[0.5px] border-[var(--border-gold)] bg-[var(--bg-main)] px-3 py-1 text-xs text-[var(--bg-dark)]">
               Debut effectif: {formatDate(result.adjustedStartDate)}
             </span>
+          </div>
+
+          <div className="mt-3 rounded-[12px] border border-[0.5px] border-[var(--border-gold)] bg-[var(--bg-card)] p-3 text-sm text-[var(--text-dark)]">
+            <p>
+              {formatDate(result.adjustedStartDate)} -&gt; {formatDate(result.expiryDate)}
+            </p>
           </div>
 
           {result.suspensionNote ? (

@@ -10,6 +10,7 @@ import type { Message } from "../types/chat";
 
 interface ChatWindowProps {
   messages: Message[];
+  apiError: string | null;
   onExampleSelect: (query: string) => void;
   backendUnavailable: boolean;
   onRetry: () => void;
@@ -67,9 +68,16 @@ function dateSeparatorLabel(date: Date): string {
   }).format(date);
 }
 
-export default function ChatWindow({ messages, onExampleSelect, backendUnavailable, onRetry }: ChatWindowProps) {
+export default function ChatWindow({ messages, apiError, onExampleSelect, backendUnavailable, onRetry }: ChatWindowProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  const genericApiErrorMessage =
+    apiError && apiError !== "backend_unreachable"
+      ? apiError === "backend_error"
+        ? "حدث خطأ أثناء معالجة الرد. حاول مرة أخرى. / Une erreur est survenue pendant le traitement. Réessayez."
+        : apiError
+      : null;
 
   const rows = useMemo<ChatRow[]>(() => {
     const nextRows: ChatRow[] = [];
@@ -190,6 +198,19 @@ export default function ChatWindow({ messages, onExampleSelect, backendUnavailab
           >
             <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
             Retry
+          </button>
+        </div>
+      ) : genericApiErrorMessage ? (
+        <div className="mx-4 mt-4 flex items-center justify-between gap-2 rounded-lg border border-[0.5px] border-[rgba(166,90,0,0.38)] bg-[rgba(166,90,0,0.14)] px-3 py-2 text-sm text-[var(--state-warning)] md:mx-6">
+          <span className="font-fr">{genericApiErrorMessage}</span>
+          <button
+            type="button"
+            onClick={onRetry}
+            className="inline-flex items-center gap-1 rounded-md border border-[0.5px] border-[rgba(166,90,0,0.4)] px-2 py-1 text-xs font-semibold hover:bg-[rgba(166,90,0,0.14)]"
+            aria-label="Fermer / إغلاق"
+          >
+            <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+            OK
           </button>
         </div>
       ) : null}

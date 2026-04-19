@@ -13,20 +13,15 @@ type PrescriptionRule = {
 };
 
 const RULES: Record<ClaimType, PrescriptionRule> = {
-  civil_tort: { years: 3, articleRef: "COC Art. 115" },
-  civil_contract: { years: 15, articleRef: "COC Art. 402" },
-  contract_nullity: { years: 1, articleRef: "COC Art. 330" },
-  unpaid_wages: { years: 1, articleRef: "Code du Travail Art. 17" },
-  cnss: { years: 5, articleRef: "Code CNSS Art. 65" },
-  penal_contravention: { years: 2, articleRef: "CPP Art. 5" },
+  civil_personal_general: { years: 10, articleRef: "COC - Action personnelle générale" },
+  civil_liability: { years: 3, articleRef: "COC - Responsabilité civile" },
+  civil_commercial: { years: 5, articleRef: "Code de commerce - Action commerciale" },
+  civil_rent_payment: { years: 3, articleRef: "COC - Paiement de loyer" },
+  civil_contract_nullity: { years: 5, articleRef: "COC - Nullité du contrat" },
+  civil_alimony: { years: 1, articleRef: "CSP - Créances alimentaires" },
+  penal_contravention: { years: 1, articleRef: "CPP Art. 5" },
   penal_delit: { years: 3, articleRef: "CPP Art. 5" },
   penal_crime: { years: 10, articleRef: "CPP Art. 5" },
-  real_estate: { years: 15, articleRef: "COC Art. 402" },
-  loan_repayment: { years: 15, articleRef: "COC Art. 402" },
-  hidden_defects: { years: 1, articleRef: "COC Art. 647" },
-  debt_acknowledgment: { years: 15, articleRef: "COC Art. 402" },
-  divorce_maintenance: { years: 1, articleRef: "CSP Art. 53" },
-  filiation: { years: 2, articleRef: "CSP Art. 68" },
 };
 
 function cloneDate(date: Date): Date {

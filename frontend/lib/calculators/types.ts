@@ -52,20 +52,15 @@ export type InheritanceResult = {
 
 // Prescription
 export type ClaimType =
-  | "civil_tort"
-  | "civil_contract"
-  | "contract_nullity"
-  | "unpaid_wages"
-  | "cnss"
+  | "civil_personal_general"
+  | "civil_liability"
+  | "civil_commercial"
+  | "civil_rent_payment"
+  | "civil_contract_nullity"
+  | "civil_alimony"
   | "penal_contravention"
   | "penal_delit"
-  | "penal_crime"
-  | "real_estate"
-  | "loan_repayment"
-  | "hidden_defects"
-  | "debt_acknowledgment"
-  | "divorce_maintenance"
-  | "filiation";
+  | "penal_crime";
 
 export type SuspensionCause = {
   type: "minority" | "criminal_proceeding" | "force_majeure" | "marriage";
@@ -100,16 +95,13 @@ export type PrescriptionResult = {
 
 // Appeal deadlines
 export type CourtLevel =
-  | "cantonal"
   | "first_instance"
-  | "correctionnel"
-  | "cour_appel_civil"
-  | "cour_appel_penal"
-  | "cour_criminelle";
+  | "cour_appel"
+  | "cour_cassation";
 
 export type LegalMatter = "civil" | "penal" | "commercial" | "administratif";
-export type JudgmentNature = "contradictoire" | "par_defaut" | "sur_opposition";
-export type NotificationMethod = "direct_party" | "to_lawyer" | "public_pronouncement" | "not_yet";
+export type JudgmentNature = "contradictoire" | "par_defaut" | "avant_dire_droit";
+export type NotificationMethod = "direct_party" | "parquet" | "greffe";
 
 export type AppealInput = {
   courtLevel: CourtLevel;

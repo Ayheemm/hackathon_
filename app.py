@@ -1,66 +1,157 @@
-import argparse
-import sys
-from pathlib import Path
+"""
+app.py  —  MIZAN Flask Backend
+Run:  python app.py
+      (HF_TOKEN must be set as environment variable)
 
-ROOT = Path(__file__).resolve().parent
-SRC = ROOT / "src"
-if str(SRC) not in sys.path:
-    sys.path.insert(0, str(SRC))
+Windows PowerShell:
+    $env:HF_TOKEN="hf_your_token_here"; python app.py
 
-from legal_rag.settings import ProjectPaths
+Linux/Mac:
+    HF_TOKEN=hf_your_token_here python app.py
+"""
+import os
+import logging
+from flask import Flask, request, jsonify, Response
+from flask_cors import CORS
+
+# rag_engine loads the FAISS index at import time (heavy, done once)
+from rag_engine import answer as rag_answer, retrieve, _detect_lang
+
+# ── App setup ──────────────────────────────────────────────────────────────────
+app = Flask(__name__)
+
+# Allow all origins during development.
+# In production, replace "*" with your frontend URL.
+CORS(app, resources={r"/*": {"origins": "*"}})
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+log = logging.getLogger("mizan")
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run bilingual legal chatbot demo")
-    parser.add_argument("--model-path", default=None, help="Optional GGUF model path")
-    parser.add_argument("--host", default="127.0.0.1", help="Host to bind")
-    parser.add_argument("--port", type=int, default=7860, help="Port to bind")
-    parser.add_argument("--k", type=int, default=5, help="Top-k chunks")
-    parser.add_argument("--min-score", type=float, default=0.35, help="Minimum retrieval score")
-    parser.add_argument("--share", action="store_true", help="Enable Gradio share link")
-    return parser.parse_args()
+# ── Routes ─────────────────────────────────────────────────────────────────────
+
+@app.route("/health", methods=["GET"])
+def health():
+    """Quick liveness check — your frontend can poll this on startup."""
+    return jsonify({"status": "ok", "model": "MIZAN RAG v2"})
 
 
-def main() -> None:
-    args = parse_args()
+@app.route("/chat", methods=["POST"])
+def chat():
+    """
+    Main chat endpoint.
 
-    import gradio as gr
+    Request body (JSON):
+        {
+            "message":  "string — the user's question",
+            "history":  [                      // optional
+                {"user": "...", "assistant": "..."},
+                ...
+            ]
+        }
 
-    from legal_rag.rag import LegalRagEngine
+    Response (JSON):
+        {
+            "answer":   "string",
+            "sources":  [
+                {"title": "...", "source": "...", "article": "...",
+                 "url": "...", "score": 0.87}
+            ],
+            "language": "fr" | "ar",
+            "error":    null | "string"
+        }
+    """
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"error": "Invalid JSON body"}), 400
 
-    paths = ProjectPaths()
-    model_path = Path(args.model_path) if args.model_path else None
+    query   = data.get("message", "").strip()
+    history = data.get("history", [])
 
-    engine = LegalRagEngine(
-        index_path=paths.faiss_index,
-        metadata_db_path=paths.metadata_db,
-        model_path=model_path,
-    )
+    if not query:
+        return jsonify({"error": "message field is required"}), 400
 
-    def respond(message: str, history):
-        result = engine.answer(query=message, k=args.k, min_score=args.min_score)
-        text = result["answer"]
-        if result["language"] == "ar":
-            return f'<div dir="rtl" style="text-align: right">{text}</div>'
-        return text
+    log.info(f"Query: {query[:80]}")
+    result = rag_answer(query, history=history)
+    log.info(f"Answer: {result['answer'][:80]}")
 
-    demo = gr.ChatInterface(
-        fn=respond,
-        title="Tunisian Legal Assistant (Arabic + French)",
-        description=(
-            "Local bilingual legal chatbot with RAG over Tunisian legal texts. "
-            "Responses include source citations."
-        ),
-        examples=[
-            "ما هي إجراءات الطعن في حكم مدني؟",
-            "Quelle est la procedure pour faire appel d'un jugement civil ?",
-            "Quels sont les delais de pourvoi en cassation ?",
+    return jsonify(result)
+
+
+@app.route("/retrieve", methods=["POST"])
+def retrieve_only():
+    """
+    Returns raw chunks without calling the LLM.
+    Useful for the frontend to show 'related articles' sidebar.
+
+    Request: {"message": "...", "k": 5}
+    """
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"error": "Invalid JSON"}), 400
+
+    query = data.get("message", "").strip()
+    k     = min(int(data.get("k", 5)), 10)
+
+    if not query:
+        return jsonify({"error": "message required"}), 400
+
+    chunks = retrieve(query, k=k)
+    return jsonify({
+        "results": [
+            {
+                "title":   c.get("title", c["source"]),
+                "source":  c["source"],
+                "article": c.get("article", ""),
+                "url":     c.get("url", ""),
+                "excerpt": c["text"][:300],
+                "score":   round(c["score"], 4),
+            }
+            for c in chunks
         ],
-    )
-
-    demo.launch(server_name=args.host, server_port=args.port, share=args.share)
-    engine.close()
+        "language": _detect_lang(query),
+    })
 
 
+@app.route("/detect-language", methods=["POST"])
+def detect_language():
+    """
+    Detects whether a query is French or Arabic.
+    Used by the frontend to switch input direction automatically.
+
+    Request: {"text": "..."}
+    """
+    data  = request.get_json(silent=True) or {}
+    text  = data.get("text", "")
+    lang  = _detect_lang(text) if text else "fr"
+    return jsonify({"language": lang, "rtl": lang == "ar"})
+
+
+# ── Error handlers ─────────────────────────────────────────────────────────────
+
+@app.errorhandler(404)
+def not_found(e):
+    return jsonify({"error": "Route not found"}), 404
+
+
+@app.errorhandler(500)
+def server_error(e):
+    log.error(f"Internal error: {e}")
+    return jsonify({"error": "Internal server error"}), 500
+
+
+# ── Entry point ────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    main()
+    token = os.getenv("HF_TOKEN", "")
+    if not token:
+        print("=" * 60)
+        print("  WARNING: HF_TOKEN is not set!")
+        print("  Set it before running:")
+        print("  Windows: $env:HF_TOKEN='hf_...' ; python app.py")
+        print("  Linux:   HF_TOKEN=hf_... python app.py")
+        print("=" * 60)
+
+    port = int(os.getenv("PORT", 5000))
+    print(f"\n  MIZAN backend running at http://localhost:{port}")
+    print(f"  Health check: http://localhost:{port}/health\n")
+    app.run(debug=False, host="0.0.0.0", port=port)

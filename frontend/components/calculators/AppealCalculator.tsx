@@ -24,6 +24,34 @@ function formatDate(value?: Date): string {
   return new Intl.DateTimeFormat("fr-TN", { dateStyle: "medium" }).format(value);
 }
 
+function daysRemainingBadge(daysRemaining?: number): { label: string; className: string } {
+  if (daysRemaining === undefined) {
+    return {
+      label: "-",
+      className: "border border-[0.5px] border-[rgba(212,160,80,0.27)] bg-[rgba(212,160,80,0.07)] text-[var(--bg-dark)]",
+    };
+  }
+
+  if (daysRemaining < 5) {
+    return {
+      label: `${daysRemaining} j`,
+      className: "border border-[0.5px] border-[rgba(143,29,29,0.35)] bg-[rgba(143,29,29,0.13)] text-[var(--state-danger)]",
+    };
+  }
+
+  if (daysRemaining <= 15) {
+    return {
+      label: `${daysRemaining} j`,
+      className: "border border-[0.5px] border-[rgba(166,90,0,0.34)] bg-[rgba(166,90,0,0.13)] text-[var(--state-warning)]",
+    };
+  }
+
+  return {
+    label: `${daysRemaining} j`,
+    className: "border border-[0.5px] border-[rgba(31,107,70,0.32)] bg-[rgba(31,107,70,0.11)] text-[var(--state-success)]",
+  };
+}
+
 export default function AppealCalculator() {
   const [courtLevel, setCourtLevel] = useState<CourtLevel>("first_instance");
   const [matter, setMatter] = useState<LegalMatter>("civil");
@@ -102,8 +130,7 @@ export default function AppealCalculator() {
         judgmentNature,
         judgmentDate: parsedJudgmentDate,
         notificationMethod,
-        notificationDate:
-          notificationMethod !== "not_yet" && notificationMethod !== "public_pronouncement" ? parsedNotificationDate : undefined,
+        notificationDate: parsedNotificationDate,
       }),
     );
   };
@@ -185,17 +212,15 @@ export default function AppealCalculator() {
             </select>
           </label>
 
-          {notificationMethod !== "not_yet" && notificationMethod !== "public_pronouncement" ? (
-            <label className="space-y-1 text-sm">
-              <span className="font-medium text-[var(--text-dark)]">Date de notification</span>
-              <input
-                type="date"
-                value={notificationDate}
-                onChange={(event) => setNotificationDate(event.target.value)}
-                className="w-full rounded-lg border border-[rgba(212,160,80,0.27)] bg-[var(--bg-card)] px-3 py-2 text-sm"
-              />
-            </label>
-          ) : null}
+          <label className="space-y-1 text-sm">
+            <span className="font-medium text-[var(--text-dark)]">Date de notification</span>
+            <input
+              type="date"
+              value={notificationDate}
+              onChange={(event) => setNotificationDate(event.target.value)}
+              className="w-full rounded-lg border border-[rgba(212,160,80,0.27)] bg-[var(--bg-card)] px-3 py-2 text-sm"
+            />
+          </label>
         </div>
 
         <div className="mt-4 flex items-center gap-2">
@@ -232,14 +257,22 @@ export default function AppealCalculator() {
           <div className="space-y-2">
             {result.remedies.map((remedy, index) => (
               <article key={`${remedy.name}-${index}`} className="rounded-[12px] border border-[0.5px] border-[var(--border-gold)] bg-[var(--bg-card)] p-3">
+                {(() => {
+                  const badge = daysRemainingBadge(remedy.daysRemaining);
+                  return (
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <h3 className="font-semibold text-[var(--text-dark)]">{remedy.name}</h3>
                     <p className="font-ar text-sm text-[var(--bg-mid)]">{remedy.nameAr}</p>
                   </div>
 
-                  {remedy.available && remedy.status ? <StatusPill status={remedy.status} /> : null}
+                  <div className="flex items-center gap-2">
+                    {remedy.available && remedy.status ? <StatusPill status={remedy.status} /> : null}
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${badge.className}`}>{badge.label}</span>
+                  </div>
                 </div>
+                  );
+                })()}
 
                 <div className="mt-2 grid gap-2 text-sm md:grid-cols-3">
                   <p>
@@ -249,7 +282,7 @@ export default function AppealCalculator() {
                     <span className="text-[var(--text-muted)]">Echeance:</span> {formatDate(remedy.deadline)}
                   </p>
                   <p>
-                    <span className="text-[var(--text-muted)]">Restant:</span> {remedy.daysRemaining ?? "-"}
+                    <span className="text-[var(--text-muted)]">Restant:</span> {remedy.daysRemaining ?? "-"} jour(s)
                   </p>
                 </div>
 

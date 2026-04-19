@@ -1,18 +1,23 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, Send } from "lucide-react";
+import { Send } from "lucide-react";
+
+import { detectLanguage as detectLanguageApi } from "../lib/api";
 
 interface InputBarProps {
   isLoading: boolean;
   seedValue?: string;
+  submitSeed?: boolean;
+  onSeedConsumed?: () => void;
+  onLanguageChange?: (language: "ar" | "fr", rtl: boolean) => void;
   onSubmit: (query: string) => Promise<void> | void;
 }
 
 const PLACEHOLDERS = ["اطرح سؤالاً قانونياً...", "Posez votre question juridique..."];
 const MAX_CHARACTERS = 1000;
 
-function detectLanguage(value: string): "ar" | "fr" {
+function detectLanguageLocally(value: string): "ar" | "fr" {
   if (!value.trim()) {
     return "fr";
   }
@@ -20,11 +25,19 @@ function detectLanguage(value: string): "ar" | "fr" {
   return arabicMatches.length / value.length > 0.25 ? "ar" : "fr";
 }
 
-export default function InputBar({ isLoading, seedValue, onSubmit }: InputBarProps) {
+export default function InputBar({
+  isLoading,
+  seedValue,
+  submitSeed = false,
+  onSeedConsumed,
+  onLanguageChange,
+  onSubmit,
+}: InputBarProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [value, setValue] = useState("");
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [detectedLang, setDetectedLang] = useState<"ar" | "fr">("fr");
+  const [isRtl, setIsRtl] = useState(false);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -34,23 +47,54 @@ export default function InputBar({ isLoading, seedValue, onSubmit }: InputBarPro
   }, []);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setDetectedLang(detectLanguage(value));
-    }, 300);
-    return () => window.clearTimeout(timer);
-  }, [value]);
+    let isCancelled = false;
+    const timer = window.setTimeout(async () => {
+      const detected = await detectLanguageApi(value);
+      if (isCancelled) {
+        return;
+      }
+
+      const language = detected.language === "ar" ? "ar" : "fr";
+      const rtl = Boolean(detected.rtl || language === "ar");
+      setDetectedLang(language);
+      setIsRtl(rtl);
+      onLanguageChange?.(language, rtl);
+    }, 500);
+
+    return () => {
+      isCancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [onLanguageChange, value]);
 
   useEffect(() => {
     if (!seedValue) {
       return;
     }
+
     const nextValue = seedValue.slice(0, MAX_CHARACTERS);
+    const language = detectLanguageLocally(nextValue);
+    const rtl = language === "ar";
+
     setValue(nextValue);
-    setDetectedLang(detectLanguage(nextValue));
+    setDetectedLang(language);
+    setIsRtl(rtl);
+    onLanguageChange?.(language, rtl);
+
     if (textareaRef.current) {
       textareaRef.current.focus();
     }
-  }, [seedValue]);
+
+    if (submitSeed) {
+      if (isLoading) {
+        return;
+      }
+      setValue("");
+      void onSubmit(nextValue);
+    }
+
+    onSeedConsumed?.();
+  }, [isLoading, onLanguageChange, onSeedConsumed, onSubmit, seedValue, submitSeed]);
 
   useEffect(() => {
     if (!textareaRef.current) {
@@ -90,6 +134,7 @@ export default function InputBar({ isLoading, seedValue, onSubmit }: InputBarPro
           <textarea
             ref={textareaRef}
             value={value}
+            dir={isRtl ? "rtl" : "ltr"}
             maxLength={MAX_CHARACTERS}
             rows={1}
             onChange={(event) => setValue(event.target.value.slice(0, MAX_CHARACTERS))}
@@ -100,7 +145,9 @@ export default function InputBar({ isLoading, seedValue, onSubmit }: InputBarPro
               }
             }}
             placeholder={PLACEHOLDERS[placeholderIndex]}
-            className="max-h-[152px] min-h-[40px] w-full resize-none overflow-y-auto rounded-md border border-[0.5px] border-[rgba(212,160,80,0.23)] bg-[rgba(255,253,248,0.12)] px-2 py-1 text-sm text-[var(--text-light)] outline-none placeholder:text-[rgba(255,248,234,0.45)] focus:border-[rgba(212,160,80,0.55)]"
+            className={`max-h-[152px] min-h-[40px] w-full resize-none overflow-y-auto rounded-md border border-[0.5px] border-[rgba(212,160,80,0.23)] bg-[rgba(255,253,248,0.12)] px-2 py-1 text-sm text-[var(--text-light)] outline-none placeholder:text-[rgba(255,248,234,0.45)] focus:border-[rgba(212,160,80,0.55)] ${
+              isRtl ? "font-ar text-right" : "font-fr text-left"
+            }`}
             aria-label="Question juridique / سؤال قانوني"
           />
 
@@ -119,7 +166,15 @@ export default function InputBar({ isLoading, seedValue, onSubmit }: InputBarPro
           aria-label="Envoyer / إرسال"
         >
           {isLoading ? (
-            <Loader2 className="h-5 w-5 animate-spin text-[var(--bg-deep)]" />
+            <span className="flex items-center gap-1" aria-hidden="true">
+              {[0, 1, 2].map((index) => (
+                <span
+                  key={index}
+                  className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--bg-deep)]"
+                  style={{ animationDelay: `${index * 120}ms` }}
+                />
+              ))}
+            </span>
           ) : (
             <Send className="h-4 w-4 text-[var(--bg-deep)]" strokeWidth={2.2} aria-hidden="true" />
           )}

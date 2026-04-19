@@ -67,6 +67,7 @@ export default function MessageBubble({ role, content, lang, sources = [], warni
   const isArabic = lang === "ar";
   const isUser = role === "user";
   const isThinking = role === "thinking";
+  const confidenceWarning = warning && warning !== "backend_unreachable" && warning !== "backend_error" ? warning : null;
 
   const locale = isArabic ? "ar-TN" : "fr-TN";
   const timeLabel = new Intl.DateTimeFormat(locale, {
@@ -116,18 +117,32 @@ export default function MessageBubble({ role, content, lang, sources = [], warni
         </div>
       ) : null}
 
-      {!isUser && !isThinking && (warning || sources.length > 0) ? (
+      {!isUser && !isThinking && (confidenceWarning || sources.length > 0) ? (
         <div className="mt-1 flex w-full max-w-[88%] flex-col gap-2">
-          {warning ? <ConfidenceWarning message={warning} lang={lang} /> : null}
-          {sources.map((source, index) => (
-            <SourceCard
-              key={`${source.url}-${index}`}
-              title={source.title}
-              url={source.url}
-              score={source.score}
-              animationDelayMs={index * 50}
-            />
-          ))}
+          {confidenceWarning ? <ConfidenceWarning message={confidenceWarning} lang={lang} /> : null}
+
+          {sources.length > 0 ? (
+            <details className="rounded-[12px] border border-[0.5px] border-[var(--border-gold)] bg-[rgba(212,160,80,0.08)] p-2">
+              <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text-dark)]">
+                {isArabic ? `المصادر (${sources.length})` : `Sources (${sources.length})`}
+              </summary>
+
+              <div className="mt-2 space-y-2">
+                {sources.map((source, index) => (
+                  <SourceCard
+                    key={`${source.url || source.title}-${index}`}
+                    title={source.title}
+                    sourceName={source.source}
+                    article={source.article}
+                    url={source.url}
+                    score={source.score}
+                    excerpt={source.excerpt}
+                    animationDelayMs={index * 40}
+                  />
+                ))}
+              </div>
+            </details>
+          ) : null}
         </div>
       ) : null}
     </div>

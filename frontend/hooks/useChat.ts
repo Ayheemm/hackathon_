@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 
-import { ChatAPIError, postChat } from "../lib/api";
-import type { ChatHistoryItem, Conversation, Message } from "../types/chat";
+import { sendMessage as requestAssistantReply } from "../lib/api";
+import type { ChatHistoryTurn, Conversation, Message } from "../types/chat";
 
 const STORAGE_KEY = "9anouni-conversations";
 const ACTIVE_CONVERSATION_KEY = "9anouni-active-conversation";
@@ -29,6 +29,28 @@ function containsArabicRatio(value: string): number {
 
 function detectLanguage(value: string): "ar" | "fr" {
   return containsArabicRatio(value) > 0.25 ? "ar" : "fr";
+}
+
+function buildConversationHistory(messages: Message[]): ChatHistoryTurn[] {
+  const turns: ChatHistoryTurn[] = [];
+  let pendingUserMessage: string | null = null;
+
+  for (const message of messages) {
+    if (message.role === "user") {
+      pendingUserMessage = message.content;
+      continue;
+    }
+
+    if (message.role === "assistant" && pendingUserMessage) {
+      turns.push({
+        user: pendingUserMessage,
+        assistant: message.content,
+      });
+      pendingUserMessage = null;
+    }
+  }
+
+  return turns.slice(-10);
 }
 
 function sortConversations(conversations: Conversation[]): Conversation[] {
@@ -82,6 +104,7 @@ export function useChat() {
   const [conversationId, setConversationId] = useState<string>(() => uuidv4());
   const [lastDetectedLang, setLastDetectedLang] = useState<"ar" | "fr">("fr");
   const [isHydrated, setIsHydrated] = useState(false);
+  const conversationHistory = useMemo(() => buildConversationHistory(messages), [messages]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -188,32 +211,26 @@ export function useChat() {
       const optimisticMessages = [...baseMessages, userMessage, thinkingMessage];
       setMessages(optimisticMessages);
 
-      const history: ChatHistoryItem[] = [...baseMessages, userMessage]
-        .filter((message) => message.role === "user" || message.role === "assistant")
-        .map((message) => ({
-          role: message.role as "user" | "assistant",
-          content: message.content,
-        }));
+      const history = buildConversationHistory(baseMessages);
 
       try {
-        const response = await postChat({
-          query: trimmed,
-          history,
-        });
+        const response = await requestAssistantReply(trimmed, history);
+        const assistantLang = response.language === "ar" ? "ar" : "fr";
 
         const assistantMessage: Message = {
           id: uuidv4(),
           role: "assistant",
           content: response.answer,
-          lang: response.lang,
+          lang: assistantLang,
           sources: response.sources,
-          warning: response.warning,
+          warning: response.error,
           timestamp: new Date(),
         };
 
         const finalMessages = [...baseMessages, userMessage, assistantMessage];
         setMessages(finalMessages);
         upsertConversation(conversationId, finalMessages);
+        setError(response.error);
       } catch (caught) {
         const fallbackMessage: Message = {
           id: uuidv4(),
@@ -228,11 +245,7 @@ export function useChat() {
         setMessages(finalMessages);
         upsertConversation(conversationId, finalMessages);
 
-        if (caught instanceof ChatAPIError && (caught.kind === "network" || caught.kind === "timeout")) {
-          setError("backend_unreachable");
-        } else {
-          setError("request_failed");
-        }
+        setError(caught instanceof Error ? "backend_error" : "backend_error");
       } finally {
         setIsLoading(false);
       }
@@ -327,6 +340,7 @@ export function useChat() {
   return {
     messages,
     conversations,
+    conversationHistory,
     isLoading,
     error,
     backendUnavailable,

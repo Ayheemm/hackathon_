@@ -1,7 +1,10 @@
 export interface Source {
   title: string;
+  source: string;
+  article: string;
   url: string;
   score: number;
+  excerpt?: string;
 }
 
 export interface Message {
@@ -21,19 +24,28 @@ export interface Conversation {
   updatedAt: Date;
 }
 
-export interface ChatAPIResponse {
+export interface ChatResponse {
   answer: string;
-  lang: "ar" | "fr";
+  language: "ar" | "fr";
   sources: Source[];
-  warning: string | null;
+  error: string | null;
 }
 
-export interface ChatHistoryItem {
-  role: "user" | "assistant";
-  content: string;
+export interface ChatHistoryTurn {
+  user: string;
+  assistant: string;
 }
 
-export interface ChatAPIRequest {
-  query: string;
-  history: ChatHistoryItem[];
+export interface RetrieveResult {
+  title: string;
+  source: string;
+  article: string;
+  url: string;
+  excerpt: string;
+  score: number;
+}
+
+export interface RetrieveResponse {
+  results: RetrieveResult[];
+  language: string;
 }

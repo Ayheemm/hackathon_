@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Menu, Plus, Trash } from "lucide-react";
 
 import ChatWindow from "../../components/ChatWindow";
@@ -13,6 +13,7 @@ export default function ChatPage() {
   const {
     messages,
     conversations,
+    error,
     isLoading,
     conversationId,
     backendUnavailable,
@@ -25,14 +26,19 @@ export default function ChatPage() {
   } = useChat();
 
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [seedValue, setSeedValue] = useState("");
+  const [seedState, setSeedState] = useState<{ value: string; submit: boolean }>({ value: "", submit: false });
+  const [detectedInputLanguage, setDetectedInputLanguage] = useState<"ar" | "fr">("fr");
+
+  const clearSeedState = useCallback(() => {
+    setSeedState({ value: "", submit: false });
+  }, []);
 
   useEffect(() => {
     const syncSeedFromUrl = () => {
       const params = new URLSearchParams(window.location.search);
       const query = params.get("q");
       if (query) {
-        setSeedValue(query);
+        setSeedState({ value: query, submit: false });
       }
     };
 
@@ -49,11 +55,11 @@ export default function ChatPage() {
         mobileOpen={mobileSidebarOpen}
         onCloseMobile={() => setMobileSidebarOpen(false)}
         onSelectConversation={(id) => {
-          setSeedValue("");
+          clearSeedState();
           loadConversation(id);
         }}
         onNewConversation={() => {
-          setSeedValue("");
+          clearSeedState();
           startNewConversation();
         }}
         onDeleteConversation={(id) => {
@@ -86,7 +92,7 @@ export default function ChatPage() {
             <button
               type="button"
               onClick={() => {
-                setSeedValue("");
+                clearSeedState();
                 startNewConversation();
               }}
               className="inline-flex items-center gap-1 rounded-md border border-[0.5px] border-[rgba(212,160,80,0.38)] bg-[rgba(255,248,234,0.07)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-light)] transition hover:bg-[rgba(255,248,234,0.14)]"
@@ -99,7 +105,7 @@ export default function ChatPage() {
             <button
               type="button"
               onClick={() => {
-                setSeedValue("");
+                clearSeedState();
                 clearHistory();
               }}
               className="inline-flex items-center gap-1 rounded-md border border-[0.5px] border-[rgba(212,160,80,0.38)] bg-[rgba(143,29,29,0.18)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-light)] transition hover:bg-[rgba(143,29,29,0.28)]"
@@ -114,7 +120,8 @@ export default function ChatPage() {
         <main className="relative flex-1 overflow-hidden">
           <ChatWindow
             messages={messages}
-            onExampleSelect={(query) => setSeedValue(query)}
+            apiError={error}
+            onExampleSelect={(query) => setSeedState({ value: query, submit: true })}
             backendUnavailable={backendUnavailable}
             onRetry={dismissError}
           />
@@ -123,13 +130,20 @@ export default function ChatPage() {
             <div className="pointer-events-auto">
               <InputBar
                 isLoading={isLoading}
-                seedValue={seedValue}
+                seedValue={seedState.value}
+                submitSeed={seedState.submit}
+                onSeedConsumed={clearSeedState}
+                onLanguageChange={(language) => setDetectedInputLanguage(language)}
                 onSubmit={async (query) => {
-                  setSeedValue("");
+                  clearSeedState();
                   await sendMessage(query);
                 }}
               />
             </div>
+          </div>
+
+          <div className="sr-only" aria-live="polite" aria-atomic="true">
+            {detectedInputLanguage === "ar" ? "Langue détectée: arabe" : "Langue détectée: français"}
           </div>
         </main>
       </div>

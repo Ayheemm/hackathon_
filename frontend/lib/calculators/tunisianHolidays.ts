@@ -55,7 +55,7 @@ export function getTunisianPublicHolidays(year: number): Date[] {
 
 export function isWorkingDay(date: Date): boolean {
   const day = date.getDay();
-  if (day === 0 || day === 6) {
+  if (day === 5 || day === 6) {
     return false;
   }
 

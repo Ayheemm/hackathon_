@@ -84,8 +84,13 @@ export function calculateInheritance(input: InheritanceInput): InheritanceResult
     }
   };
 
-  const hasChildren = hasAny(heirMap, ["son", "daughter", "sons_son", "sons_daughter"]);
+  const hasDescendants = hasAny(heirMap, ["son", "daughter", "sons_son", "sons_daughter"]);
   const hasSons = count(heirMap, "son") > 0;
+  const daughterCount = count(heirMap, "daughter");
+  const sonsSonCount = count(heirMap, "sons_son");
+  const sonsDaughterCount = count(heirMap, "sons_daughter");
+  const paternalHalfBrotherCount = count(heirMap, "paternal_half_brother");
+  const paternalHalfSisterCount = count(heirMap, "paternal_half_sister");
 
   if (count(heirMap, "father") > 0) {
     block("paternal_grandfather", "father", "Hajb: Father blocks paternal grandfather (Art. 136)");
@@ -106,13 +111,18 @@ export function calculateInheritance(input: InheritanceInput): InheritanceResult
     block("paternal_half_sister", "son", "Hajb: Children block paternal half siblings");
   }
 
-  if (hasChildren) {
+  if (hasDescendants) {
     block("maternal_half_brother", "son", "Hajb: Children block uterine siblings");
     block("maternal_half_sister", "son", "Hajb: Children block uterine siblings");
   }
 
   if (count(heirMap, "full_brother") > 0) {
     block("paternal_half_brother", "full_brother", "Hajb: Full brother blocks paternal half brother");
+    block("paternal_half_sister", "full_brother", "Hajb: Full brother blocks paternal half sister");
+  }
+
+  if (daughterCount >= 2 && sonsSonCount === 0) {
+    block("sons_daughter", "daughter", "Hajb: Two daughters block son's daughter unless a son's son exists");
   }
 
   const shares: ShareRow[] = [];
@@ -138,29 +148,28 @@ export function calculateInheritance(input: InheritanceInput): InheritanceResult
     count(heirMap, "maternal_half_sister");
 
   if (count(heirMap, "husband") > 0) {
-    addFixed("husband", hasChildren ? 1 / 4 : 1 / 2);
+    addFixed("husband", hasDescendants ? 1 / 4 : 1 / 2);
   }
 
   const wifeCount = count(heirMap, "wife");
   if (wifeCount > 0 && !blockedBy.has("wife")) {
     shares.push({
       heir: heirMap.get("wife") as Heir,
-      share: hasChildren ? 1 / 8 : 1 / 4,
+      share: hasDescendants ? 1 / 8 : 1 / 4,
       shareType: "fard",
       articleRef: ARTICLE_REF.wife,
     });
   }
 
   if (count(heirMap, "mother") > 0 && !blockedBy.has("mother")) {
-    addFixed("mother", hasChildren || siblingCount >= 2 ? 1 / 6 : 1 / 3);
+    addFixed("mother", hasDescendants || siblingCount >= 2 ? 1 / 6 : 1 / 3);
   }
 
   const fatherPresent = count(heirMap, "father") > 0 && !blockedBy.has("father");
-  if (fatherPresent && hasChildren) {
+  if (fatherPresent && hasSons) {
     addFixed("father", 1 / 6);
   }
 
-  const daughterCount = count(heirMap, "daughter");
   const sonCount = count(heirMap, "son");
   if (daughterCount > 0 && sonCount === 0 && !blockedBy.has("daughter")) {
     shares.push({
@@ -171,13 +180,10 @@ export function calculateInheritance(input: InheritanceInput): InheritanceResult
     });
   }
 
-  const sonsSonCount = count(heirMap, "sons_son");
-  const sonsDaughterCount = count(heirMap, "sons_daughter");
   if (
     sonsSonCount === 0 &&
     sonsDaughterCount > 0 &&
     sonCount === 0 &&
-    daughterCount === 0 &&
     !blockedBy.has("sons_daughter")
   ) {
     shares.push({
@@ -193,15 +199,17 @@ export function calculateInheritance(input: InheritanceInput): InheritanceResult
   const uterineTotal = uterineBrotherCount + uterineSisterCount;
   if (
     uterineTotal > 0 &&
-    !hasChildren &&
+    !hasDescendants &&
     !fatherPresent &&
     !blockedBy.has("maternal_half_brother") &&
     !blockedBy.has("maternal_half_sister")
   ) {
+    const totalShare = uterineTotal === 1 ? 1 / 6 : 1 / 3;
+
     if (uterineBrotherCount > 0) {
       shares.push({
         heir: heirMap.get("maternal_half_brother") as Heir,
-        share: uterineTotal === 1 ? 1 / 6 : 1 / 3,
+        share: totalShare * (uterineBrotherCount / uterineTotal),
         shareType: "fard",
         articleRef: ARTICLE_REF.maternal_half_brother,
       });
@@ -209,7 +217,7 @@ export function calculateInheritance(input: InheritanceInput): InheritanceResult
     if (uterineSisterCount > 0) {
       shares.push({
         heir: heirMap.get("maternal_half_sister") as Heir,
-        share: uterineTotal === 1 ? 1 / 6 : 1 / 3,
+        share: totalShare * (uterineSisterCount / uterineTotal),
         shareType: "fard",
         articleRef: ARTICLE_REF.maternal_half_sister,
       });
@@ -233,7 +241,7 @@ export function calculateInheritance(input: InheritanceInput): InheritanceResult
   const asabaRows: ShareRow[] = [];
 
   if (remainder > 0) {
-    if (sonCount > 0 || daughterCount > 0) {
+    if (sonCount > 0) {
       const totalUnits = sonCount * 2 + daughterCount;
       if (sonCount > 0) {
         asabaRows.push({
@@ -249,25 +257,6 @@ export function calculateInheritance(input: InheritanceInput): InheritanceResult
           share: remainder * (daughterCount / totalUnits),
           shareType: "asaba",
           articleRef: ARTICLE_REF.daughter,
-        });
-      }
-      remainder = 0;
-    } else if (sonsSonCount > 0 || sonsDaughterCount > 0) {
-      const totalUnits = sonsSonCount * 2 + sonsDaughterCount;
-      if (sonsSonCount > 0 && !blockedBy.has("sons_son")) {
-        asabaRows.push({
-          heir: heirMap.get("sons_son") as Heir,
-          share: remainder * ((sonsSonCount * 2) / totalUnits),
-          shareType: "asaba",
-          articleRef: ARTICLE_REF.sons_son,
-        });
-      }
-      if (sonsDaughterCount > 0 && !blockedBy.has("sons_daughter")) {
-        asabaRows.push({
-          heir: heirMap.get("sons_daughter") as Heir,
-          share: remainder * (sonsDaughterCount / totalUnits),
-          shareType: "asaba",
-          articleRef: ARTICLE_REF.sons_daughter,
         });
       }
       remainder = 0;
@@ -298,6 +287,25 @@ export function calculateInheritance(input: InheritanceInput): InheritanceResult
             share: remainder * (fullSisterCount / totalUnits),
             shareType: "asaba",
             articleRef: ARTICLE_REF.full_sister,
+          });
+        }
+        remainder = 0;
+      } else if (paternalHalfBrotherCount > 0 || paternalHalfSisterCount > 0) {
+        const totalUnits = paternalHalfBrotherCount * 2 + paternalHalfSisterCount;
+        if (paternalHalfBrotherCount > 0 && !blockedBy.has("paternal_half_brother")) {
+          asabaRows.push({
+            heir: heirMap.get("paternal_half_brother") as Heir,
+            share: remainder * ((paternalHalfBrotherCount * 2) / totalUnits),
+            shareType: "asaba",
+            articleRef: ARTICLE_REF.paternal_half_brother,
+          });
+        }
+        if (paternalHalfSisterCount > 0 && !blockedBy.has("paternal_half_sister")) {
+          asabaRows.push({
+            heir: heirMap.get("paternal_half_sister") as Heir,
+            share: remainder * (paternalHalfSisterCount / totalUnits),
+            shareType: "asaba",
+            articleRef: ARTICLE_REF.paternal_half_sister,
           });
         }
         remainder = 0;

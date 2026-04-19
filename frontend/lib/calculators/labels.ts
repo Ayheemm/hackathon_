@@ -21,29 +21,21 @@ export const HEIR_LABELS: Record<HeirType, { fr: string; ar: string }> = {
 };
 
 export const CLAIM_LABELS: Record<ClaimType, { fr: string; ar: string }> = {
-  civil_tort: { fr: "Responsabilite delictuelle", ar: "المسؤولية التقصيرية" },
-  civil_contract: { fr: "Action contractuelle", ar: "دعوى عقدية" },
-  contract_nullity: { fr: "Nullite de contrat", ar: "بطلان العقد" },
-  unpaid_wages: { fr: "Salaires impayes", ar: "أجور غير مدفوعة" },
-  cnss: { fr: "Cotisations CNSS", ar: "مساهمات الصندوق الاجتماعي" },
+  civil_personal_general: { fr: "Action personnelle générale", ar: "دعوى شخصية عامة" },
+  civil_liability: { fr: "Action en responsabilité civile", ar: "دعوى المسؤولية المدنية" },
+  civil_commercial: { fr: "Action commerciale", ar: "دعوى تجارية" },
+  civil_rent_payment: { fr: "Action en paiement de loyer", ar: "دعوى خلاص معلوم الكراء" },
+  civil_contract_nullity: { fr: "Action en nullité de contrat", ar: "دعوى بطلان العقد" },
+  civil_alimony: { fr: "Créances alimentaires", ar: "ديون النفقة" },
   penal_contravention: { fr: "Infraction contraventionnelle", ar: "مخالفة" },
   penal_delit: { fr: "Infraction delictuelle", ar: "جنحة" },
   penal_crime: { fr: "Crime", ar: "جناية" },
-  real_estate: { fr: "Droit immobilier", ar: "حق عقاري" },
-  loan_repayment: { fr: "Remboursement de pret", ar: "استرجاع دين" },
-  hidden_defects: { fr: "Vices caches", ar: "العيوب الخفية" },
-  debt_acknowledgment: { fr: "Reconnaissance de dette", ar: "إقرار بالدين" },
-  divorce_maintenance: { fr: "Pension apres divorce", ar: "نفقة بعد الطلاق" },
-  filiation: { fr: "Filiation", ar: "النسب" },
 };
 
 export const COURT_LABELS: Record<CourtLevel, { fr: string; ar: string }> = {
-  cantonal: { fr: "Tribunal cantonal", ar: "المحكمة الناحية" },
   first_instance: { fr: "Tribunal de premiere instance", ar: "المحكمة الابتدائية" },
-  correctionnel: { fr: "Chambre correctionnelle", ar: "الدائرة الجناحية" },
-  cour_appel_civil: { fr: "Cour d'appel (civil)", ar: "محكمة الاستئناف (مدني)" },
-  cour_appel_penal: { fr: "Cour d'appel (penal)", ar: "محكمة الاستئناف (جزائي)" },
-  cour_criminelle: { fr: "Chambre criminelle", ar: "الدائرة الجنائية" },
+  cour_appel: { fr: "Cour d'appel", ar: "محكمة الاستئناف" },
+  cour_cassation: { fr: "Cour de cassation", ar: "محكمة التعقيب" },
 };
 
 export const MATTER_LABELS: Record<LegalMatter, { fr: string; ar: string }> = {
@@ -56,12 +48,11 @@ export const MATTER_LABELS: Record<LegalMatter, { fr: string; ar: string }> = {
 export const JUDGMENT_NATURE_LABELS: Record<JudgmentNature, { fr: string; ar: string }> = {
   contradictoire: { fr: "Contradictoire", ar: "حضوري" },
   par_defaut: { fr: "Par defaut", ar: "غيابي" },
-  sur_opposition: { fr: "Sur opposition", ar: "بعد الاعتراض" },
+  avant_dire_droit: { fr: "Avant dire droit", ar: "قبل الفصل في الأصل" },
 };
 
 export const NOTIFICATION_LABELS: Record<NotificationMethod, { fr: string; ar: string }> = {
   direct_party: { fr: "Signification a la partie", ar: "تبليغ للطرف" },
-  to_lawyer: { fr: "Signification a l'avocat", ar: "تبليغ للمحامي" },
-  public_pronouncement: { fr: "Prononce public", ar: "النطق العلني" },
-  not_yet: { fr: "Pas encore notifie", ar: "لم يقع التبليغ" },
+  parquet: { fr: "Signification a parquet", ar: "تبليغ للنيابة" },
+  greffe: { fr: "Depot au greffe", ar: "إيداع بالكتابة" },
 };

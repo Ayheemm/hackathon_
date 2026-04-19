@@ -29,6 +29,18 @@ const HEIR_ORDER: HeirType[] = [
   "maternal_grandmother",
 ];
 
+const PIE_COLORS = [
+  "#8f5c2a",
+  "#a56b32",
+  "#bc7a2f",
+  "#d49f52",
+  "#6a4b2f",
+  "#9e6c43",
+  "#7f5a36",
+  "#b88b5b",
+  "#4f3a24",
+];
+
 function formatCurrency(value?: number): string {
   if (value === undefined || Number.isNaN(value)) {
     return "-";
@@ -46,6 +58,17 @@ function buildInitialCounts(): Record<HeirType, number> {
   );
 }
 
+function toPercent(numerator: number, denominator: number): number {
+  if (!denominator) {
+    return 0;
+  }
+  return (numerator / denominator) * 100;
+}
+
+function formatPercent(value: number): string {
+  return `${value.toFixed(2)}%`;
+}
+
 export default function InheritanceCalculator() {
   const [deceasedGender, setDeceasedGender] = useState<Gender>("male");
   const [estateValue, setEstateValue] = useState("");
@@ -57,6 +80,39 @@ export default function InheritanceCalculator() {
     () => Object.values(heirCounts).reduce((sum, count) => sum + count, 0),
     [heirCounts],
   );
+
+  const nonBlockedRows = useMemo(
+    () => (result ? result.heirs.filter((row) => row.shareType !== "blocked") : []),
+    [result],
+  );
+
+  const totalPercent = useMemo(
+    () => nonBlockedRows.reduce((sum, row) => sum + toPercent(row.shareNumerator, row.shareDenominator), 0),
+    [nonBlockedRows],
+  );
+
+  const pieSegments = useMemo(() => {
+    if (!result || nonBlockedRows.length === 0) {
+      return [] as Array<{ color: string; dash: number; offset: number; label: string }>;
+    }
+
+    const radius = 42;
+    const circumference = 2 * Math.PI * radius;
+    let cumulative = 0;
+
+    return nonBlockedRows.map((row, index) => {
+      const ratio = row.shareNumerator / row.shareDenominator;
+      const dash = Math.max(0, ratio * circumference);
+      const segment = {
+        color: PIE_COLORS[index % PIE_COLORS.length],
+        dash,
+        offset: cumulative,
+        label: HEIR_LABELS[row.heir.type].fr,
+      };
+      cumulative += dash;
+      return segment;
+    });
+  }, [nonBlockedRows, result]);
 
   const explanationSeed = useMemo(() => {
     if (!result) {
@@ -216,20 +272,69 @@ export default function InheritanceCalculator() {
 
       {result ? (
         <CalculatorCard title="Resultat" subtitle={`Verification totale: ${result.totalVerification}`}>
+          {(result.awlApplied || result.raddApplied) ? (
+            <div className="mb-4 rounded-[12px] border border-[0.5px] border-[rgba(166,90,0,0.34)] bg-[rgba(166,90,0,0.12)] p-3 text-sm text-[var(--text-dark)]">
+              {result.awlApplied ? "Attention: cas d'Awl applique (reduction proportionnelle des parts). " : ""}
+              {result.raddApplied ? "Attention: cas de Radd applique (redistribution du reliquat)." : ""}
+            </div>
+          ) : null}
+
+          {pieSegments.length > 0 ? (
+            <div className="mb-4 rounded-[12px] border border-[0.5px] border-[var(--border-gold)] bg-[var(--bg-card)] p-3">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center">
+                <div className="mx-auto w-[180px] shrink-0">
+                  <svg viewBox="0 0 120 120" role="img" aria-label="Répartition des parts">
+                    <circle cx="60" cy="60" r="42" fill="none" stroke="rgba(212,160,80,0.2)" strokeWidth="18" />
+                    {pieSegments.map((segment, index) => (
+                      <circle
+                        key={`${segment.label}-${index}`}
+                        cx="60"
+                        cy="60"
+                        r="42"
+                        fill="none"
+                        stroke={segment.color}
+                        strokeWidth="18"
+                        strokeLinecap="butt"
+                        strokeDasharray={`${segment.dash} 264`}
+                        strokeDashoffset={-segment.offset}
+                        transform="rotate(-90 60 60)"
+                      />
+                    ))}
+                    <text x="60" y="56" textAnchor="middle" className="fill-[var(--text-dark)] text-[10px] font-semibold">
+                      Total
+                    </text>
+                    <text x="60" y="70" textAnchor="middle" className="fill-[var(--text-dark)] text-[12px] font-bold">
+                      {formatPercent(totalPercent)}
+                    </text>
+                  </svg>
+                </div>
+
+                <div className="grid flex-1 gap-1 sm:grid-cols-2">
+                  {pieSegments.map((segment, index) => (
+                    <div key={`${segment.label}-legend-${index}`} className="flex items-center gap-2 text-xs text-[var(--text-dark)]">
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: segment.color }} aria-hidden="true" />
+                      <span className="truncate">{segment.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
           <div className="overflow-x-auto">
             <table className="min-w-full border-separate border-spacing-y-1 text-sm">
               <thead>
                 <tr className="text-left text-xs uppercase tracking-wide text-[var(--text-muted)]">
                   <th className="px-2 py-1">Heritier</th>
-                  <th className="px-2 py-1">Part</th>
-                  <th className="px-2 py-1">Type</th>
-                  <th className="px-2 py-1">Montant</th>
-                  <th className="px-2 py-1">Base legale</th>
+                  <th className="px-2 py-1">Part (fraction)</th>
+                  <th className="px-2 py-1">%</th>
+                  <th className="px-2 py-1">Montant (TND)</th>
                 </tr>
               </thead>
               <tbody>
                 {result.heirs.map((row, index) => {
                   const labels = HEIR_LABELS[row.heir.type];
+                  const percent = row.shareType === "blocked" ? 0 : toPercent(row.shareNumerator, row.shareDenominator);
                   return (
                     <tr key={`${row.heir.type}-${index}`} className="rounded-lg border border-[0.5px] border-[var(--border-gold)] bg-[var(--bg-card)]">
                       <td className="px-2 py-2">
@@ -240,22 +345,18 @@ export default function InheritanceCalculator() {
                       <td className="px-2 py-2 font-mono-legal">
                         {row.shareType === "blocked" ? "0/1" : `${row.shareNumerator}/${row.shareDenominator}`}
                       </td>
-                      <td className="px-2 py-2">
-                        {row.shareType === "blocked" ? (
-                          <span className="rounded-full border border-[0.5px] border-[rgba(212,160,80,0.27)] bg-[rgba(212,160,80,0.13)] px-2 py-0.5 text-xs font-semibold text-[var(--bg-dark)]">
-                            Hajb
-                          </span>
-                        ) : (
-                          <span className="rounded-full border border-[0.5px] border-[rgba(212,160,80,0.27)] bg-[rgba(212,160,80,0.07)] px-2 py-0.5 text-xs font-semibold text-[var(--bg-deep)]">
-                            {row.shareType.toUpperCase()}
-                          </span>
-                        )}
-                      </td>
+                      <td className="px-2 py-2">{formatPercent(percent)}</td>
                       <td className="px-2 py-2">{formatCurrency(row.amountTND)}</td>
-                      <td className="px-2 py-2 text-xs text-[var(--bg-dark)]">{row.articleRef}</td>
                     </tr>
                   );
                 })}
+
+                <tr className="rounded-lg border border-[0.5px] border-[var(--border-gold)] bg-[rgba(212,160,80,0.08)] font-semibold text-[var(--text-dark)]">
+                  <td className="px-2 py-2">Total</td>
+                  <td className="px-2 py-2 font-mono-legal">{result.totalVerification}</td>
+                  <td className="px-2 py-2">{formatPercent(totalPercent)}</td>
+                  <td className="px-2 py-2">{formatCurrency(result.heirs.reduce((sum, row) => sum + (row.amountTND ?? 0), 0) || undefined)}</td>
+                </tr>
               </tbody>
             </table>
           </div>
